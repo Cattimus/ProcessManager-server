@@ -49,6 +49,7 @@ public class IOManager {
 	}
 
 	//manage reading from program
+	//TODO - reading output from program could use more work, current system works but is bad
 	private void inputLoop() {
 		while(inputOpen) {
 			try {
