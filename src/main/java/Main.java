@@ -3,19 +3,25 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
 
-	public static void main(String[] args) throws IOException, InterruptedException{
-		ManagedProcess test = new ManagedProcess("proc/main");
-		test.start();
+	public static void main(String[] args) {
+		try {
+			ManagedProcess test = new ManagedProcess("proc/main");
 
-		test.io.write("Ree");
+			test.io.write("Test");
 
-		TimeUnit.SECONDS.sleep(1);
+			TimeUnit.MILLISECONDS.sleep(250);
 
-		if(test.io.inputCount() > 0) {
-			System.out.println(test.io.readLine());
+			if(test.io.readBufferSize() > 0) {
+				System.out.println(test.io.readLine());
+			}
+
+			test.stop();
+		} catch(IOException e) {
+			e.printStackTrace();
+		} catch(InterruptedException e) {
+			e.printStackTrace();
 		}
 
-
-		test.stop();
+		System.out.println("Program execution is finished.");
 	}
 }

@@ -1,6 +1,4 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -13,7 +11,7 @@ public class IOManager {
 	private boolean outputOpen;
 
 	//input from process stdout
-	private final InputStream in;
+	private final BufferedReader in;
 	private final BlockingQueue<String> inputLines = new LinkedBlockingQueue<>();
 	private boolean inputOpen;
 
@@ -23,7 +21,7 @@ public class IOManager {
 		outputOpen = true;
 		new Thread(this::outputLoop).start();
 
-		in = instream;
+		in = new BufferedReader(new InputStreamReader(instream));
 		inputOpen = true;
 		new Thread(this::inputLoop).start();
 	}
@@ -49,16 +47,20 @@ public class IOManager {
 	}
 
 	//manage reading from program
-	//TODO - reading output from program could use more work, current system works but is bad
 	private void inputLoop() {
 		while(inputOpen) {
 			try {
-				String data = new String(in.readAllBytes());
-				inputLines.add(data);
+				if(in.ready()) {
+					inputLines.add(in.readLine());
+				} else {
+					TimeUnit.MILLISECONDS.sleep(50);
+				}
 			} catch(IOException e) {
 				//TODO - Need a more graceful method of exiting after a broken pipe
 				inputOpen = false;
 				break;
+			} catch(InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -80,7 +82,7 @@ public class IOManager {
 	}
 
 	//show how many lines are currently available
-	public int inputCount() {
+	public int readBufferSize() {
 		return inputLines.size();
 	}
 

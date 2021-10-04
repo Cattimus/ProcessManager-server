@@ -9,22 +9,28 @@ public class ManagedProcess {
 	private final List<String> processArgs;
 
 	//TODO - sanitize input before arbitrarily executing processes
-	ManagedProcess(String procName) {
+	ManagedProcess(String procName) throws IOException {
 		processArgs = new ArrayList<>();
 		processArgs.add(procName);
+
+		start();
 	}
 
-	ManagedProcess(String procName, String[] procArgs) {
+	ManagedProcess(String procName, String[] procArgs) throws IOException {
 		processArgs = new ArrayList<>();
 		processArgs.add(procName);
 		processArgs.addAll(Arrays.asList(procArgs));
+
+		start();
 	}
 
 	public void stop() {
-		io.destroy();
-		proc.destroy();
-		proc = null;
-		io = null;
+		if(io != null && proc != null) {
+			io.destroy();
+			proc.destroy();
+			proc = null;
+			io = null;
+		}
 	}
 
 	public void start() throws IOException {
