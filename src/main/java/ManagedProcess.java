@@ -1,38 +1,77 @@
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class ManagedProcess {
 	public IOManager io = null;
 	private Process proc = null;
 	private boolean running = false;
-	private final List<String> processArgs;
+	private final List<String> processArgs = new ArrayList<>();
+	private final Map<String, ProcessSignal> userSignals = new HashMap<>();
 
-	//TODO - sanitize input before arbitrarily executing processes
+	//TODO - user-defined signals
+	//TODO - scheduled run
+	//TODO - scheduled restart (needs to utilize user-defined signals) custom stop/start?
+	//TODO - scheduled stop (needs to utilize user-defined signals)
+	//TODO - auto-restart (on crash or exit)
+
 	ManagedProcess(String procName) {
-		processArgs = new ArrayList<>();
 		processArgs.add(procName);
+
+		new Thread(this::aliveCheck).start();
 	}
 
 	ManagedProcess(String procName, String... procArgs) {
-		processArgs = new ArrayList<>();
 		processArgs.add(procName);
 		processArgs.addAll(Arrays.asList(procArgs));
+
+		new Thread(this::aliveCheck).start();
 	}
 
+	public void addSignal(String name, ProcessSignal signal) {
+		if(!userSignals.containsKey(name)) {
+			userSignals.put(name, signal);
+		} else {
+			System.err.println("ManagedProcess: signal " + '"' + name + '"' + " will not be added as it is already defined.");
+		}
+	}
+
+	public void sendSignal(String name, String... args) {
+		if(userSignals.containsKey(name)) {
+			String rawSignal = userSignals.get(name).send(args);
+			System.out.println("Sent signal: " + rawSignal);
+			io.write(rawSignal);
+		}
+	}
+
+	//monitor process's running status from a separate thread
+	public void aliveCheck() {
+		while(running) {
+			if(!proc.isAlive()) {
+				running = false;
+				io.destroy();
+			} else {
+				try {
+					TimeUnit.MILLISECONDS.sleep(50);
+				} catch(InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	//default stop process
 	public void stop() {
 		if(running) {
 			io.destroy();
 			proc.destroy();
-			proc = null;
-			io = null;
 			running = false;
 		} else {
 			System.err.println("Process: " + processArgs.get(0) + " is not running and will not be stopped.");
 		}
 	}
 
+	//default start process
 	public void start() {
 		if(!running) {
 			try {
@@ -40,6 +79,7 @@ public class ManagedProcess {
 				proc = temp.start();
 				io = new IOManager(proc.getOutputStream(), proc.getInputStream());
 				running = true;
+				new Thread(this::aliveCheck).start();
 			} catch (IOException e) {
 				System.err.println("Unable to start process: " + processArgs.get(0) + ".");
 				e.printStackTrace();
@@ -50,11 +90,11 @@ public class ManagedProcess {
 		}
 	}
 
+	//default restart process
 	public void restart() {
 		if(running) {
 			stop();
 		}
-
 		start();
 	}
 
