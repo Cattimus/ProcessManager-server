@@ -52,7 +52,6 @@ public class ManagedProcess {
 		while(running) {
 			if(!proc.isAlive()) {
 				running = false;
-				io.destroy();
 				//log the remaining IO cache here
 
 				if(autoRestart) {
@@ -83,9 +82,13 @@ public class ManagedProcess {
 	public void start() {
 		if(!running) {
 			try {
+				if(io != null) {
+					io.destroy();
+				}
+
 				ProcessBuilder temp = new ProcessBuilder(processArgs);
 				proc = temp.start();
-				io = new IOManager(proc.getOutputStream(), proc.getInputStream());
+				io = new IOManager(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
 				running = true;
 				new Thread(this::aliveCheck).start();
 			} catch (IOException e) {

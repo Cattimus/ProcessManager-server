@@ -1,95 +1,93 @@
 import java.io.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class IOManager {
-
-	//output to process stdin
 	private final OutputStream out;
-	private final BlockingQueue<String> outputLines = new LinkedBlockingQueue<>();
-	private boolean outputOpen;
-
-	//input from process stdout
 	private final BufferedReader in;
-	private final BlockingQueue<String> inputLines = new LinkedBlockingQueue<>();
-	private boolean inputOpen;
+	private final BufferedReader err;
 
 	//starts IO threads and assigns default values
-	IOManager(OutputStream outstream, InputStream instream) {
+	IOManager(OutputStream outstream, InputStream instream, InputStream errstream) {
 		out = outstream;
-		outputOpen = true;
-		new Thread(this::outputLoop).start();
-
 		in = new BufferedReader(new InputStreamReader(instream));
-		inputOpen = true;
-		new Thread(this::inputLoop).start();
+		err = new BufferedReader(new InputStreamReader(errstream));
 	}
 
-	//manage writing to program
-	private void outputLoop() {
-		while(outputOpen) {
-			try {
-				if (outputLines.size() > 0) {
-					out.write(outputLines.remove().getBytes());
-					out.flush();
-				} else {
-					TimeUnit.MILLISECONDS.sleep(50);
-				}
-			} catch(IOException e) {
-				//TODO - Need a more graceful method of exiting after a broken pipe
-				outputOpen = false;
-				break;
-			} catch(InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	//manage reading from program
-	private void inputLoop() {
-		while(inputOpen) {
-			try {
-				if(in.ready()) {
-					inputLines.add(in.readLine());
-				} else {
-					TimeUnit.MILLISECONDS.sleep(50);
-				}
-			} catch(IOException e) {
-				//TODO - Need a more graceful method of exiting after a broken pipe
-				inputOpen = false;
-				break;
-			} catch(InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	//add message to output queue (newline is added since that is expected by most programs for user input)
+	//write message to process stdin
 	public void write(String data) {
-		outputLines.add((data + "\n"));
+		try {
+			out.write((data + "\n").getBytes());
+			out.flush();
+		} catch(IOException e) {
+			System.err.println("Could not write to process stdin.");
+		}
 	}
 	public void write(byte[] data) {
-		outputLines.add((new String(data) + "\n"));
+		try {
+			out.write((new String(data) + "\n").getBytes());
+			out.flush();
+		} catch(IOException e) {
+			System.err.println("Could not write to process stdin.");
+		}
 	}
 	public void write(char[] data) {
-		outputLines.add((new String(data) + "\n"));
+		try {
+			out.write((new String(data) + "\n").getBytes());
+			out.flush();
+		} catch(IOException e) {
+			System.err.println("Could not write to process stdin.");
+		}
 	}
 
-	//read line from output feed if available
-	public String readLine() {
-		return inputLines.remove();
+	//read line from process stdout
+	public String readOut() {
+		String line = null;
+
+		try {
+			line = in.readLine();
+		} catch(IOException e) {
+			System.err.println("Unable to read from process stdout.");
+		}
+
+		return line;
 	}
 
-	//show how many lines are currently available
-	public int readBufferSize() {
-		return inputLines.size();
+	//check if stdout has data
+	public boolean hasOut() {
+		boolean data = false;
+		try {
+			data = in.ready();
+		} catch(IOException e) {
+			System.err.println("Unable to access process stdout.");
+		}
+
+		return data;
 	}
 
-	//gracefully close pipe
-	public void closeOutput() {
-		outputOpen = false;
+	public String readErr() {
+		String line = null;
 
+		try {
+			line = err.readLine();
+		} catch(IOException e) {
+			System.err.println("Unable to read from process stdout.");
+		}
+
+		return line;
+	}
+
+	public boolean hasErr() {
+		boolean data = false;
+		try {
+			data = err.ready();
+		} catch(IOException e) {
+			System.err.println("Unable to access process stdout.");
+		}
+
+		return data;
+	}
+
+	//close output to stdin
+	public void closeOut() {
 		try {
 			out.close();
 		} catch(IOException e) {
@@ -97,9 +95,8 @@ public class IOManager {
 		}
 	}
 
-	public void closeInput() {
-		inputOpen = false;
-
+	//close input from stdout
+	public void closeIn() {
 		try {
 			in.close();
 		} catch(IOException e) {
@@ -107,16 +104,17 @@ public class IOManager {
 		}
 	}
 
+	public void closeErr() {
+		try {
+			err.close();
+		} catch(IOException e) {
+			//this happens when the program has already exited
+		}
+	}
+
 	public void destroy() {
-		closeOutput();
-		closeInput();
-	}
-
-	public boolean outputActive() {
-		return outputOpen;
-	}
-
-	public boolean inputActive() {
-		return inputOpen;
+		closeOut();
+		closeIn();
+		closeErr();
 	}
 }
