@@ -12,6 +12,7 @@ public class Main {
 		test.addSignal("stop", stop);
 		test.addSignal("save", save);
 		test.addSignal("send", send);
+		test.enableAutorestart();
 
 		test.start();
 		test.io.write("Test");
@@ -24,6 +25,15 @@ public class Main {
 		while(test.io.readBufferSize() > 0) {
 			System.out.println(test.io.readLine());
 		}
+
+		test.sendSignal("stop");
+		TimeUnit.MILLISECONDS.sleep(250);
+
+		while(test.io.readBufferSize() > 0) {
+			System.out.println(test.io.readLine());
+		}
+
+		test.disableAutorestart();
 
 		test.sendSignal("stop");
 		TimeUnit.MILLISECONDS.sleep(250);

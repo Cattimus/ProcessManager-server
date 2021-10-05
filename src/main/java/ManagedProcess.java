@@ -5,26 +5,28 @@ import java.util.concurrent.TimeUnit;
 public class ManagedProcess {
 	public IOManager io = null;
 	private Process proc = null;
-	private boolean running = false;
+
 	private final List<String> processArgs = new ArrayList<>();
 	private final Map<String, ProcessSignal> userSignals = new HashMap<>();
 
+	private boolean running = false;
+	private boolean autoRestart = false;
+
+	//TODO - scheduling system
 	//TODO - scheduled run
+	//TODO - scheduled signals
 	//TODO - scheduled restart (needs to utilize user-defined signals) custom stop/start?
 	//TODO - scheduled stop (needs to utilize user-defined signals)
-	//TODO - auto-restart (on crash or exit)
 
 	ManagedProcess(String procName) {
 		processArgs.add(procName);
 
-		new Thread(this::aliveCheck).start();
 	}
 
 	ManagedProcess(String procName, String... procArgs) {
 		processArgs.add(procName);
 		processArgs.addAll(Arrays.asList(procArgs));
 
-		new Thread(this::aliveCheck).start();
 	}
 
 	public void addSignal(String name, ProcessSignal signal) {
@@ -51,6 +53,11 @@ public class ManagedProcess {
 			if(!proc.isAlive()) {
 				running = false;
 				io.destroy();
+				//log the remaining IO cache here
+
+				if(autoRestart) {
+					start();
+				}
 			} else {
 				try {
 					TimeUnit.MILLISECONDS.sleep(50);
@@ -105,5 +112,13 @@ public class ManagedProcess {
 
 	public boolean isRunning() {
 		return running;
+	}
+
+	public void enableAutorestart() {
+		autoRestart = true;
+	}
+
+	public void disableAutorestart() {
+		autoRestart = false;
 	}
 }
