@@ -11,7 +11,10 @@ public class ManagedProcess {
 
 	private boolean running = false;
 	private boolean autoRestart = false;
+	private boolean logging = false;
 
+	//TODO - logging using files (stdout stderr as fallbacks)
+	//TODO - full logging history (possibly unreasonable)
 	//TODO - scheduling system
 	//TODO - scheduled run
 	//TODO - scheduled signals
@@ -48,15 +51,29 @@ public class ManagedProcess {
 	}
 
 	//monitor process's running status from a separate thread
-	public void aliveCheck() {
+	public void statusThread() {
 		while(running) {
+
+			//run logging frequently if required
+			if(logging) {
+				while(io.hasErr()) {
+					System.err.println(io.readErr());
+				}
+
+				while(io.hasOut()) {
+					System.out.println(io.readOut());
+				}
+			}
+
+			//program has crashed or been killed
 			if(!proc.isAlive()) {
 				running = false;
-				//log the remaining IO cache here
 
 				if(autoRestart) {
 					start();
 				}
+
+			//Program is idle
 			} else {
 				try {
 					TimeUnit.MILLISECONDS.sleep(50);
@@ -90,7 +107,7 @@ public class ManagedProcess {
 				proc = temp.start();
 				io = new IOManager(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
 				running = true;
-				new Thread(this::aliveCheck).start();
+				new Thread(this::statusThread).start();
 			} catch (IOException e) {
 				System.err.println("Unable to start process: " + processArgs.get(0) + ".");
 				e.printStackTrace();
@@ -123,5 +140,13 @@ public class ManagedProcess {
 
 	public void disableAutorestart() {
 		autoRestart = false;
+	}
+
+	public void enableLogging() {
+		logging = true;
+	}
+
+	public void disableLogging() {
+		logging = false;
 	}
 }
