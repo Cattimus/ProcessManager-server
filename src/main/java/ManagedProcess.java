@@ -13,16 +13,12 @@ public class ManagedProcess {
 	ManagedProcess(String procName) {
 		processArgs = new ArrayList<>();
 		processArgs.add(procName);
-
-		start();
 	}
 
-	ManagedProcess(String procName, String[] procArgs) {
+	ManagedProcess(String procName, String... procArgs) {
 		processArgs = new ArrayList<>();
 		processArgs.add(procName);
 		processArgs.addAll(Arrays.asList(procArgs));
-
-		start();
 	}
 
 	public void stop() {
