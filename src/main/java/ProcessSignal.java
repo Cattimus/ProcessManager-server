@@ -14,6 +14,7 @@ public class ProcessSignal {
 	*
 	*  For example: "--file %1 --exclude %2 --with %1"
 	*  defines a command string with 2 arguments. %1 and %2.
+	*  Arguments should start at 1 and increase
 	*  A repeated escaped character will repeat the argument. */
 	ProcessSignal(String signalFormat) {
 		parseFormat(signalFormat);
@@ -29,12 +30,11 @@ public class ProcessSignal {
 			staticArgs.add(i);
 		}
 		while(match.find()) {
-			escapeIndexes.add(Integer.parseInt(match.group().replace("%", "")));
-		}
+			int temp = Integer.parseInt(match.group().replace("%", ""));
+			escapeIndexes.add(temp);
 
-		for(var i : escapeIndexes) {
-			if(i > argCount) {
-				 argCount = i;
+			if(temp > argCount) {
+				argCount = temp;
 			}
 		}
 	}
@@ -47,12 +47,10 @@ public class ProcessSignal {
 		}
 
 		String toReturn = "";
-
 		for(int i = 0; i < argCount; i++) {
 			toReturn += staticArgs.get(i);
 			toReturn += args[escapeIndexes.get(i) - 1];
 		}
-
 		if(staticArgs.size() > argCount) {
 			toReturn += staticArgs.get(staticArgs.size() - 1);
 		}
