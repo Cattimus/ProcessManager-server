@@ -5,15 +5,20 @@ public class Main {
 
 	public static void main(String[] args) throws InterruptedException {
 		ProcessSignal stop = new ProcessSignal("quit gracefully");
-		ProcessSignal start = new ProcessSignal("\"arg goes here\"");
+		ProcessSignal save = new ProcessSignal("save-all");
+		ProcessSignal send = new ProcessSignal("--send %1");
 
 		ManagedProcess test = new ManagedProcess("python3", "proc/main.py");
-		test.addSignal("start", start);
 		test.addSignal("stop", stop);
+		test.addSignal("save", save);
+		test.addSignal("send", send);
 
 		test.start();
 		test.io.write("Test");
-
+		TimeUnit.MILLISECONDS.sleep(250);
+		test.sendSignal("save");
+		TimeUnit.MILLISECONDS.sleep(250);
+		test.sendSignal("send", "Test");
 		TimeUnit.MILLISECONDS.sleep(250);
 
 		while(test.io.readBufferSize() > 0) {

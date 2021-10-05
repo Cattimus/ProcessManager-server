@@ -1,12 +1,13 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ProcessSignal {
-	private List<String>   staticArgs    = new ArrayList<>();
-	private List<Integer>  escapeIndexes = new ArrayList<>();
-	int argCount = 0;
+	private final List<String>   staticArgs    = new ArrayList<>();
+	private final List<Integer>  escapeIndexes = new ArrayList<>();
+	private int argCount = 0;
 
 	/* The signal is defined by a format string and optional arguments.
 	*  Arguments may be defined in the command string by use of
@@ -26,9 +27,7 @@ public class ProcessSignal {
 		Pattern pattern = Pattern.compile("(?<!\\\\)%\\d+");
 		Matcher match = pattern.matcher(signalFormat);
 
-		for(var i : staticMatches) {
-			staticArgs.add(i);
-		}
+		staticArgs.addAll(Arrays.asList(staticMatches));
 		while(match.find()) {
 			int temp = Integer.parseInt(match.group().replace("%", ""));
 			escapeIndexes.add(temp);
@@ -46,31 +45,19 @@ public class ProcessSignal {
 			return null;
 		}
 
-		String toReturn = "";
+		StringBuilder toReturn = new StringBuilder();
 		for(int i = 0; i < argCount; i++) {
-			toReturn += staticArgs.get(i);
-			toReturn += args[escapeIndexes.get(i) - 1];
+			toReturn.append(staticArgs.get(i));
+			toReturn.append(args[escapeIndexes.get(i) - 1]);
 		}
 		if(staticArgs.size() > argCount) {
-			toReturn += staticArgs.get(staticArgs.size() - 1);
+			toReturn.append(staticArgs.get(staticArgs.size() - 1));
 		}
 
-		return toReturn;
+		return toReturn.toString();
 	}
 
 	public int argCount() {
 		return argCount;
-	}
-
-	public void showStatic() {
-		for(var i : staticArgs) {
-			System.out.println(i);
-		}
-	}
-
-	public void showArgs () {
-		for(var i : escapeIndexes) {
-			System.out.println(i);
-		}
 	}
 }

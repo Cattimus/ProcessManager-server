@@ -9,7 +9,6 @@ public class ManagedProcess {
 	private final List<String> processArgs = new ArrayList<>();
 	private final Map<String, ProcessSignal> userSignals = new HashMap<>();
 
-	//TODO - user-defined signals
 	//TODO - scheduled run
 	//TODO - scheduled restart (needs to utilize user-defined signals) custom stop/start?
 	//TODO - scheduled stop (needs to utilize user-defined signals)
@@ -39,8 +38,10 @@ public class ManagedProcess {
 	public void sendSignal(String name, String... args) {
 		if(userSignals.containsKey(name)) {
 			String rawSignal = userSignals.get(name).send(args);
-			System.out.println("Sent signal: " + rawSignal);
-			io.write(rawSignal);
+
+			if(rawSignal != null) {
+				io.write(rawSignal);
+			}
 		}
 	}
 
