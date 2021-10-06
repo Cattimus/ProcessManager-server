@@ -21,47 +21,52 @@ public class ProcessLogger {
 	//TODO - remote logging
 	//TODO - log history without writing to file
 
+	//sets up the logger for writing to a file instead of stdout
 	public void enableLogfile() {
 		if(logfile) {
 			return;
 		}
-
+		//check if file already exists
 		File checkFile = new File(logFilePath);
-
 		try {
 			if(!checkFile.exists()) {
+				//if file does not exist, create a new file
 				if(!checkFile.createNewFile()) {
+					//file creation fails
 					System.err.println(managerID + ": unable to create logfile. File logging disabled.");
 					logfile = false;
 					return;
 				}
 			}
+			//open a writer to the file
 			logOut = new BufferedWriter(new FileWriter(checkFile, true));
 		} catch(IOException e) {
 			System.err.println(managerID + ": unable to create logfile. File logging disabled.");
 			logfile = false;
 			return;
 		}
-
 		logfile = true;
 	}
 
+	//enable log file with a string
 	public void enableLogfile(String newPath) {
 		if(logfile) {
 			return;
 		}
 
+		//reset old log file path and assign new log file path
+		logFilePath = managerID + ".log";
 		logFilePath = newPath + logFilePath;
 		enableLogfile();
 	}
 
+	//close output stream to file and disable file logging
 	public void disableLogFile() {
 		if(!logfile) {
 			return;
 		}
 
 		logfile = false;
-
 		if(logOut != null) {
 			try {
 				logOut.close();
@@ -71,6 +76,7 @@ public class ProcessLogger {
 		}
 	}
 
+	//additional function to close the output file stream, as it may not be clear
 	public void destroy() {
 		if(logOut != null) {
 			disableLogFile();
@@ -78,51 +84,40 @@ public class ProcessLogger {
 	}
 
 	//add log entry (stdout)
-	public void add(String msg) {
-		try {
-			if(timestamp) {
-				String currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy hh:mm:ss.SS - "));
-				if(logfile) {
-					logOut.write(currentTime + msg + "\n");
-					logOut.flush();
-				} else {
-					System.out.println(currentTime + "[" + managerID + "]: " + msg);
-				}
-			} else {
-				if(logfile) {
-					logOut.write(msg + "\n");
-					logOut.flush();
-				} else {
-					System.out.println("[" + managerID + "]: " + msg);
-				}
+	public void addMsg(String msg) {
+		String currentTime = "";
+		if(timestamp) {
+			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy hh:mm:ss.SS - "));
+		}
+
+		if(logfile) {
+			try {
+				logOut.write(currentTime + msg + "\n");
+				logOut.flush();
+			} catch(IOException e) {
+				System.err.println(managerID + ": unable to write to logfile.");
 			}
-		} catch(IOException e) {
-			System.err.println(managerID + ": unable to write to logfile.");
+		} else {
+			System.out.println(currentTime + "[" + managerID + "]: " + msg);
 		}
 	}
 
-	//add log entry(error)
+	//add log entry (stderr)
 	public void addErr(String msg) {
-		try {
-			if(timestamp) {
-				//dash is left out so errors can be spotted at a glance in logfiles
-				String currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy hh:mm:ss.SS "));
-				if(logfile) {
-					logOut.write(currentTime + "[ERROR]: " + msg + "\n");
-					logOut.flush();
-				} else {
-					System.err.println(currentTime + "[ERROR][" + managerID + "]: " + msg);
-				}
-			} else {
-				if(logfile) {
-					logOut.write("[ERROR]: " + msg + "\n");
-					logOut.flush();
-				} else {
-					System.err.println("[ERROR][" + managerID + "]: " + msg);
-				}
+		String currentTime = "";
+		if(timestamp) {
+			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy hh:mm:ss.SS "));
+		}
+
+		if(logfile) {
+			try {
+				logOut.write(currentTime + "[ERROR]: " + msg + "\n");
+				logOut.flush();
+			} catch(IOException e) {
+				System.err.println(managerID + ": unable to write to logfile.");
 			}
-		} catch(IOException e) {
-			System.err.println(managerID + ": unable to write to logfile.");
+		} else {
+			System.err.println(currentTime + "[ERROR][" + managerID + "]: " + msg);
 		}
 	}
 

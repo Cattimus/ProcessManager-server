@@ -63,6 +63,7 @@ public class IOManager {
 		return data;
 	}
 
+	//read line from stderr
 	public String readErr() {
 		String line = null;
 
@@ -75,6 +76,7 @@ public class IOManager {
 		return line;
 	}
 
+	//check if stderr has data
 	public boolean hasErr() {
 		boolean data = false;
 		try {
@@ -104,6 +106,7 @@ public class IOManager {
 		}
 	}
 
+	//close input from stderr
 	public void closeErr() {
 		try {
 			err.close();
@@ -112,6 +115,7 @@ public class IOManager {
 		}
 	}
 
+	//close all outputs and inputs
 	public void destroy() {
 		closeOut();
 		closeIn();

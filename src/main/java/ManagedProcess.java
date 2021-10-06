@@ -35,6 +35,7 @@ public class ManagedProcess {
 		log = new ProcessLogger(managerName);
 	}
 
+	//define a signal that may be sent to the process
 	public void addSignal(String name, ProcessSignal signal) {
 		if(!userSignals.containsKey(name)) {
 			userSignals.put(name, signal);
@@ -43,6 +44,7 @@ public class ManagedProcess {
 		}
 	}
 
+	//execute an existing signal with optional arguments
 	public void sendSignal(String name, String... args) {
 		if(userSignals.containsKey(name)) {
 			String rawSignal = userSignals.get(name).send(args);
@@ -64,7 +66,7 @@ public class ManagedProcess {
 				}
 
 				while(io.hasOut()) {
-					log.add(io.readOut());
+					log.addMsg(io.readOut());
 				}
 			}
 
@@ -76,7 +78,7 @@ public class ManagedProcess {
 					start();
 				}
 
-			//Program is idle
+			//Program is running
 			} else {
 				try {
 					TimeUnit.MILLISECONDS.sleep(50);
@@ -106,17 +108,24 @@ public class ManagedProcess {
 					io.destroy();
 				}
 
+				//create and start process
 				ProcessBuilder temp = new ProcessBuilder(processArgs);
-				proc = temp.start();
-				io = new IOManager(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
 				running = true;
+				proc = temp.start();
+
+				//create IO manager for process
+				io = new IOManager(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
+
+				//monitor process
 				new Thread(this::statusThread).start();
+
 			} catch (IOException e) {
 				System.err.println("Unable to start process: " + processArgs.get(0) + ".");
 				e.printStackTrace();
 				running = false;
 			}
 		} else {
+			//Program has been started already (we don't want to double-start a process)
 			System.err.println("Process: " + processArgs.get(0) + " is already running and will not be started.");
 		}
 	}
