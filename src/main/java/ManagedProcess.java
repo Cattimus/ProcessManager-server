@@ -3,33 +3,36 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class ManagedProcess {
-	public IOManager io = null;
+	private String managerName;
+	public  IOManager io = null;
 	private Process proc = null;
+	private ProcessLogger log;
 
 	private final List<String> processArgs = new ArrayList<>();
 	private final Map<String, ProcessSignal> userSignals = new HashMap<>();
 
-	private boolean running = false;
+	private boolean running     = false;
 	private boolean autoRestart = false;
-	private boolean logging = false;
+	private boolean logging     = false;
 
-	//TODO - logging using files (stdout stderr as fallbacks)
-	//TODO - full logging history (possibly unreasonable)
+	//TODO - offer full logging history to clients on connect
 	//TODO - scheduling system
 	//TODO - scheduled run
 	//TODO - scheduled signals
 	//TODO - scheduled restart (needs to utilize user-defined signals) custom stop/start?
 	//TODO - scheduled stop (needs to utilize user-defined signals)
 
-	ManagedProcess(String procName) {
+	ManagedProcess(String managerName, String procName) {
+		this.managerName = managerName;
 		processArgs.add(procName);
-
+		log = new ProcessLogger(managerName);
 	}
 
-	ManagedProcess(String procName, String... procArgs) {
+	ManagedProcess(String managerName, String procName, String... procArgs) {
+		this.managerName = managerName;
 		processArgs.add(procName);
 		processArgs.addAll(Arrays.asList(procArgs));
-
+		log = new ProcessLogger(managerName);
 	}
 
 	public void addSignal(String name, ProcessSignal signal) {
@@ -57,11 +60,11 @@ public class ManagedProcess {
 			//run logging frequently if required
 			if(logging) {
 				while(io.hasErr()) {
-					System.err.println(io.readErr());
+					log.addErr(io.readErr());
 				}
 
 				while(io.hasOut()) {
-					System.out.println(io.readOut());
+					log.add(io.readOut());
 				}
 			}
 
@@ -129,24 +132,42 @@ public class ManagedProcess {
 	public long getPID() {
 		return proc.pid();
 	}
-
 	public boolean isRunning() {
 		return running;
 	}
-
 	public void enableAutorestart() {
 		autoRestart = true;
 	}
-
 	public void disableAutorestart() {
 		autoRestart = false;
 	}
-
 	public void enableLogging() {
 		logging = true;
 	}
-
 	public void disableLogging() {
 		logging = false;
+	}
+	public void disableTimestamp() {
+		log.disableTimestamp();
+	}
+	public void enableTimestamp() {
+		log.enableTimestamp();
+	}
+	public void enableLogfile() {
+		if(!logging) {
+			logging = true;
+		}
+
+		log.enableLogfile();
+	}
+	public void enableLogfile(String path) {
+		if(!logging) {
+			logging = true;
+		}
+
+		log.enableLogfile(path);
+	}
+	public void disableLogfile() {
+		log.disableLogFile();
 	}
 }
