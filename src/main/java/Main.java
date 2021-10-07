@@ -1,3 +1,4 @@
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.concurrent.TimeUnit;
@@ -17,15 +18,15 @@ public class Main {
 		ScheduledTask test = ScheduledTask.Builder.newInstance()
 				.startProcess()
 				.daily().
-				at(LocalTime.of(20, 32))
+				at(LocalTime.of(17, 0))
 				.build();
 
-		while(!test.isElapsed()) {
-			TimeUnit.MILLISECONDS.sleep(50);
-		}
-
-		System.out.println("timer has elapsed at: " + LocalDateTime.now());
-
-		test.reset();
+		test.printTime();
+		test.setElapseTime(LocalDateTime.now().plusHours(2));
+		test.printTime();
+		test.setElapseTime(LocalTime.of(15, 0));
+		test.printTime();
+		test.setElapseTime(LocalDateTime.of(2021,10, 7, 17, 0));
+		test.printTime();
 	}
 }
