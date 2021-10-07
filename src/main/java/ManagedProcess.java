@@ -9,7 +9,7 @@ public class ManagedProcess {
 	private ProcessLogger log;
 
 	private final List<String> processArgs = new ArrayList<>();
-	private final Map<String, ProcessSignal> userSignals = new HashMap<>();
+	private final Map<String, String> userSignals = new HashMap<>();
 
 	private boolean running     = false;
 	private boolean autoRestart = false;
@@ -36,7 +36,7 @@ public class ManagedProcess {
 	}
 
 	//define a signal that may be sent to the process
-	public void addSignal(String name, ProcessSignal signal) {
+	public void addSignal(String name, String signal) {
 		if(!userSignals.containsKey(name)) {
 			userSignals.put(name, signal);
 		} else {
@@ -47,11 +47,8 @@ public class ManagedProcess {
 	//execute an existing signal with optional arguments
 	public void sendSignal(String name, String... args) {
 		if(userSignals.containsKey(name)) {
-			String rawSignal = userSignals.get(name).send(args);
-
-			if(rawSignal != null) {
-				io.write(rawSignal);
-			}
+			String rawSignal = userSignals.get(name);
+			io.write(rawSignal);
 		}
 	}
 

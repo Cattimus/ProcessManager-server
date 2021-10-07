@@ -4,6 +4,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/* NOTE: This will remain in the source for the time being as it may be reworked later on.
+   However, this class is quite overkill for the utility it would provide, and ultimately
+   just boils down to a string. Arguments are not particularly useful and storing arguments
+   alongside the string amounts to a static string. This class will likely be removed.
+ */
+
 public class ProcessSignal {
 	private final List<String>   staticArgs    = new ArrayList<>();
 	private final List<Integer>  escapeIndexes = new ArrayList<>();
