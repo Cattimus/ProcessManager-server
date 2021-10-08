@@ -2,18 +2,24 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+//TODO - one time events
+
 public class ScheduledTask {
-	public enum SignalType{START, STOP, RESTART, SIGNAL}
+	public enum SignalType{START, STOP, RESTART, SIGNAL, NONE}
 	private LocalDateTime elapseTime; //the local time the task is set to activate next
 	private String signal;            //this signal will be sent to the process upon elapse
+	private String taskName;		  //identify the task for the log
 	private Duration frequency;       //upon elapse, the new time will be set to localtime.now() + duration
 	private SignalType type;
 	private boolean enabled;
+	private boolean oneTime;
 
 	ScheduledTask(Builder toCopy) {
 		type 		= toCopy.type;
 		signal      = toCopy.signal;
 		enabled     = toCopy.enabled;
+		oneTime 	= toCopy.oneTime;
+		taskName  	= toCopy.taskName;
 		frequency   = toCopy.frequency;
 		elapseTime  = toCopy.elapseTime;
 	}
@@ -28,6 +34,10 @@ public class ScheduledTask {
 
 	public void disable() {
 		enabled = false;
+	}
+
+	public String getName() {
+		return taskName;
 	}
 
 	public boolean isEnabled() {
@@ -64,6 +74,10 @@ public class ScheduledTask {
 		elapseTime = scheduleDateTime;
 	}
 
+	public LocalDateTime getElapseTime() {
+		return elapseTime;
+	}
+
 	//change the frequency once elapsed
 	public void changeFrequency(Duration newFrequency) {
 		frequency = newFrequency;
@@ -73,25 +87,33 @@ public class ScheduledTask {
 		return elapseTime.isBefore(LocalDateTime.now());
 	}
 
+	//if this is a one time event, set it to disabled
 	public void reset() {
-		elapseTime = elapseTime.plus(frequency);
+		if(!oneTime) {
+			elapseTime = elapseTime.plus(frequency);
+		} else {
+			enabled = false;
+		}
 	}
 
 	public static class Builder {
 		private LocalDateTime elapseTime;
 		private String signal = null;
+		private String taskName = null;
 		private Duration frequency;
 		private SignalType type;
 		private boolean enabled = true;
+		private boolean oneTime = false;
 
-		private Builder() {
-			elapseTime = LocalDateTime.now(); //by default elapse time is set to the instant it's created
-			frequency = Duration.ofDays(1);   //by default frequency is set to daily
-			this.type = SignalType.START;
+		private Builder(String name) {
+			this.elapseTime = LocalDateTime.now(); //by default elapse time is set to the instant it's created
+			this.frequency = Duration.ofDays(1);   //by default frequency is set to daily
+			this.type = SignalType.NONE;
+			this.taskName = name;
 		}
 
-		public static Builder newInstance() {
-			return new Builder();
+		public static Builder newInstance(String name) {
+			return new Builder(name);
 		}
 
 		//assign a signal to be sent upon elapse
@@ -116,6 +138,12 @@ public class ScheduledTask {
 		//restart process upon relapse
 		public Builder restartProcess() {
 			this.type = SignalType.RESTART;
+			return this;
+		}
+
+		//one time frequency
+		public Builder once() {
+			this.oneTime = true;
 			return this;
 		}
 

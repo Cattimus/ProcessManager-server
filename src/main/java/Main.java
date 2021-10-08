@@ -6,27 +6,21 @@ import java.util.concurrent.TimeUnit;
 public class Main {
 
 	public static void main(String[] args) throws InterruptedException {
-		/*
-		ManagedProcess test = new ManagedProcess("Biggus testus", "proc/somecheck");
-		test.enableLogfile("log/");
+		ManagedProcess test = new ManagedProcess("test", "python3", "proc/main.py");
+		test.enableLogging();
+
+		ScheduledTask exampleSignal = ScheduledTask.Builder.newInstance("graceful shutdown")
+				.sendSignal("quit gracefully")
+				.once()
+				.at(LocalTime.of(19,11))
+				.build();
+
+		test.addTask(exampleSignal);
+
 		test.start();
 
 		while(test.isRunning()) {
 			TimeUnit.MILLISECONDS.sleep(1);
-		}*/
-
-		ScheduledTask test = ScheduledTask.Builder.newInstance()
-				.startProcess()
-				.daily().
-				at(LocalTime.of(17, 0))
-				.build();
-
-		test.printTime();
-		test.setElapseTime(LocalDateTime.now().plusHours(2));
-		test.printTime();
-		test.setElapseTime(LocalTime.of(15, 0));
-		test.printTime();
-		test.setElapseTime(LocalDateTime.of(2021,10, 7, 17, 0));
-		test.printTime();
+		}
 	}
 }

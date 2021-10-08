@@ -87,7 +87,7 @@ public class ProcessLogger {
 	public void addMsg(String msg) {
 		String currentTime = "";
 		if(timestamp) {
-			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy hh:mm:ss.SS - "));
+			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy HH:mm:ss.SS - "));
 		}
 
 		if(logfile) {
@@ -106,7 +106,7 @@ public class ProcessLogger {
 	public void addErr(String msg) {
 		String currentTime = "";
 		if(timestamp) {
-			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy hh:mm:ss.SS "));
+			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy HH:mm:ss.SS "));
 		}
 
 		if(logfile) {

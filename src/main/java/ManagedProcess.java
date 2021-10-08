@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -8,19 +10,18 @@ public class ManagedProcess {
 	private Process proc = null;
 	private ProcessLogger log;
 
-	private final List<String> processArgs = new ArrayList<>();
+	private final List<String> processArgs        = new ArrayList<>();
+	private final List<ScheduledTask> tasks       = new ArrayList<>();
 	private final Map<String, String> userSignals = new HashMap<>();
 
-	private boolean running     = false;
-	private boolean autoRestart = false;
-	private boolean logging     = false;
+	private Thread schedulingThread;
+
+	private boolean running     	= false;
+	private boolean autoRestart 	= false;
+	private boolean logging     	= false;
+	private boolean scheduleRunning = false;
 
 	//TODO - offer full logging history to clients on connect
-	//TODO - scheduling system
-	//TODO - scheduled run
-	//TODO - scheduled signals
-	//TODO - scheduled restart (needs to utilize user-defined signals) custom stop/start?
-	//TODO - scheduled stop (needs to utilize user-defined signals)
 
 	ManagedProcess(String managerName, String procName) {
 		this.managerName = managerName;
@@ -52,11 +53,109 @@ public class ManagedProcess {
 		}
 	}
 
+	public void addTask(ScheduledTask task) {
+		tasks.add(task);
+		log.addMsg("New task has been added: '" + task.getName() + "'. Set to activate at: " + task.getElapseTime());
+
+		//interrupt scheduling thread so it can act on the task if the scheduling thread is running
+		if(scheduleRunning) {
+			schedulingThread.interrupt();
+		} else {
+			//activate scheduling thread
+			scheduleRunning = true;
+			schedulingThread = new Thread(this::scheduleThread);
+			schedulingThread.start();
+		}
+	}
+
+	//TODO - seems there's an intermittent bug with this function, sometimes returns null unexpectedly
+	private LocalDateTime waitTime() {
+		LocalDateTime toReturn = null;
+
+		//find the next task to be executed
+		for(var task : tasks) {
+			if(task.isEnabled() && task.isEnabled()) {
+				if(toReturn == null) {
+					toReturn = task.getElapseTime();
+				} else if(task.getElapseTime().isBefore(toReturn)) {
+					toReturn = task.getElapseTime();
+				}
+			}
+		}
+
+		return toReturn;
+	}
+
+	private ScheduledTask getElapsed() {
+		for(var task : tasks) {
+			if(task.isEnabled() && task.isElapsed()) {
+				return task;
+			}
+		}
+
+		//no elapsed task could be found
+		return null;
+	}
+
+	//logic behind scheduled events
+	private void scheduleThread() {
+		while(scheduleRunning && tasks.size() > 0) {
+			LocalDateTime wait = waitTime();
+			Duration toWait = Duration.between(LocalDateTime.now(), wait);
+
+			//wait for the next task to be elapsed unless interrupted
+			try {
+				TimeUnit.MILLISECONDS.sleep(toWait.toMillis());
+			} catch (InterruptedException e) {
+				//new task has been added to thread
+				continue;
+			}
+
+			//TODO - monitoring thread needs to be informed if we're meddling with the process
+			ScheduledTask elapsed = getElapsed();
+			if (elapsed != null) {
+				switch (elapsed.getType()) {
+					case NONE:
+						break;
+
+					case START:
+						start();
+						break;
+
+					case STOP:
+						stop();
+						break;
+
+					case RESTART:
+						restart();
+						break;
+
+					case SIGNAL:
+						io.write(elapsed.getSignal());
+						break;
+				}
+				log.addMsg("'" + elapsed.getName() + "' has activated.");
+				elapsed.reset();
+
+				//remove if one-time task
+				if (!elapsed.isEnabled()) {
+					tasks.remove(elapsed);
+				} else {
+					log.addMsg("'" + elapsed.getName() + "' has been reset.");
+				}
+			}
+		}
+
+		//if no tasks are pending, thread will exit
+		scheduleRunning = false;
+	}
+
 	//monitor process's running status from a separate thread
-	public void statusThread() {
+	//TODO - status thread needs to handle a process being restarted if autorestart is enabled
+	private void statusThread() {
 		while(running) {
 
-			//run logging frequently if required
+			//run logging if required
 			if(logging) {
 				while(io.hasErr()) {
 					log.addErr(io.readErr());
@@ -69,13 +168,14 @@ public class ManagedProcess {
 
 			//program has crashed or been killed
 			if(!proc.isAlive()) {
+				log.addMsg("Process has exited unexpectedly.");
 				running = false;
 
 				if(autoRestart) {
 					start();
 				}
 
-			//Program is running
+			//Program is running but no action is required
 			} else {
 				try {
 					TimeUnit.MILLISECONDS.sleep(50);
@@ -86,12 +186,14 @@ public class ManagedProcess {
 		}
 	}
 
-	//default stop process
+	//default stop process (unsafe, no saving)
 	public void stop() {
 		if(running) {
 			io.destroy();
 			proc.destroy();
 			running = false;
+			scheduleRunning = false;
+			schedulingThread.interrupt();
 		} else {
 			System.err.println("Process: " + processArgs.get(0) + " is not running and will not be stopped.");
 		}
