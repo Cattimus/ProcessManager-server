@@ -18,7 +18,7 @@ public class ManagedProcess {
 
 	private boolean running     	= false;
 	private boolean autoRestart 	= false;
-	private boolean logging     	= false;
+	private boolean logging     	= true;
 	private boolean scheduleRunning = false;
 
 	//TODO - offer full logging history to clients on connect
@@ -41,7 +41,7 @@ public class ManagedProcess {
 		if(!userSignals.containsKey(name)) {
 			userSignals.put(name, signal);
 		} else {
-			System.err.println("ManagedProcess: signal " + '"' + name + '"' + " will not be added as it is already defined.");
+			log.addMsg("ERROR", "ManagedProcess: signal " + '"' + name + '"' + " will not be added as it is already defined.");
 		}
 	}
 
@@ -134,14 +134,14 @@ public class ManagedProcess {
 						io.write(elapsed.getSignal());
 						break;
 				}
-				log.addMsg("'" + elapsed.getName() + "' has activated.");
+				log.addMsg("TASK", "'" + elapsed.getName() + "' has activated.");
 				elapsed.reset();
 
 				//remove if one-time task
 				if (!elapsed.isEnabled()) {
 					tasks.remove(elapsed);
 				} else {
-					log.addMsg("'" + elapsed.getName() + "' has been reset.");
+					log.addMsg("TASK", "'" + elapsed.getName() + "' has been reset.");
 				}
 			}
 		}
@@ -158,11 +158,11 @@ public class ManagedProcess {
 			//run logging if required
 			if(logging) {
 				while(io.hasErr()) {
-					log.addErr(io.readErr());
+					log.addMsg("STDERR", io.readErr());
 				}
 
 				while(io.hasOut()) {
-					log.addMsg(io.readOut());
+					log.addMsg("STDOUT", io.readOut());
 				}
 			}
 
@@ -189,13 +189,14 @@ public class ManagedProcess {
 	//default stop process (unsafe, no saving)
 	public void stop() {
 		if(running) {
+			log.addMsg("Process is stopping.");
 			io.destroy();
 			proc.destroy();
 			running = false;
 			scheduleRunning = false;
 			schedulingThread.interrupt();
 		} else {
-			System.err.println("Process: " + processArgs.get(0) + " is not running and will not be stopped.");
+			log.addMsg("ERROR", "Process: " + processArgs.get(0) + " is not running and will not be stopped.");
 		}
 	}
 
@@ -203,6 +204,7 @@ public class ManagedProcess {
 	public void start() {
 		if(!running) {
 			try {
+				log.addMsg("Process is starting.");
 				if(io != null) {
 					io.destroy();
 				}
@@ -219,13 +221,13 @@ public class ManagedProcess {
 				new Thread(this::statusThread).start();
 
 			} catch (IOException e) {
-				System.err.println("Unable to start process: " + processArgs.get(0) + ".");
+				log.addMsg("ERROR", "Unable to start process: " + processArgs.get(0) + ".");
 				e.printStackTrace();
 				running = false;
 			}
 		} else {
 			//Program has been started already (we don't want to double-start a process)
-			System.err.println("Process: " + processArgs.get(0) + " is already running and will not be started.");
+			log.addMsg("ERROR", "Process: " + processArgs.get(0) + " is already running and will not be started.");
 		}
 	}
 

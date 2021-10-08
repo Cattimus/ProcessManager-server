@@ -2,8 +2,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-//TODO - one time events
-
 public class ScheduledTask {
 	public enum SignalType{START, STOP, RESTART, SIGNAL, NONE}
 	private LocalDateTime elapseTime; //the local time the task is set to activate next

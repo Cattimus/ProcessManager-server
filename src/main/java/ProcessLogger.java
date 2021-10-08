@@ -18,6 +18,7 @@ public class ProcessLogger {
 		managerID = managerName;
 	}
 
+	//TODO - [URGENT] need a more graceful method of identifying different sources of log output
 	//TODO - remote logging
 	//TODO - log history without writing to file
 
@@ -102,22 +103,21 @@ public class ProcessLogger {
 		}
 	}
 
-	//add log entry (stderr)
-	public void addErr(String msg) {
+	public void addMsg(String info, String msg) {
 		String currentTime = "";
 		if(timestamp) {
-			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy HH:mm:ss.SS "));
+			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy HH:mm:ss.SS - "));
 		}
 
 		if(logfile) {
 			try {
-				logOut.write(currentTime + "[ERROR]: " + msg + "\n");
+				logOut.write(currentTime + "[" + managerID + "][" + info + "]: " + msg + "\n");
 				logOut.flush();
 			} catch(IOException e) {
 				System.err.println(managerID + ": unable to write to logfile.");
 			}
 		} else {
-			System.err.println(currentTime + "[ERROR][" + managerID + "]: " + msg);
+			System.out.println(currentTime + "[" + managerID + "][" + info + "]: " + msg);
 		}
 	}
 
