@@ -130,7 +130,7 @@ public class ManagedProcess {
 		return null;
 	}
 
-	//TODO - status thread needs to handle a process being restarted if autorestart is enabled
+	//TODO - status thread needs to be informed if the process is killed/restarted
 	//monitor process's running status from a separate thread
 	private void statusThread() {
 		while(running) {
