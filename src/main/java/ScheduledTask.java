@@ -8,9 +8,9 @@ public class ScheduledTask {
 	private String signal;            //this signal will be sent to the process upon elapse
 	private String taskName;		  //identify the task for the log
 	private Duration frequency;       //upon elapse, the new time will be set to localtime.now() + duration
-	private SignalType type;
-	private boolean enabled;
-	private boolean oneTime;
+	private SignalType type;		  //signals which action to take by the scheduling thread
+	private boolean enabled;		  //signals if task is active or inactive (inactive tasks are automatically removed)
+	private boolean oneTime;		  //signals if the task should reactivate itself upon reset()
 
 	ScheduledTask(Builder toCopy) {
 		type 		= toCopy.type;
@@ -22,38 +22,7 @@ public class ScheduledTask {
 		elapseTime  = toCopy.elapseTime;
 	}
 
-	public void printTime() {
-		System.out.println("Time: " + elapseTime);
-	}
-
-	public void enable() {
-		enabled = true;
-	}
-
-	public void disable() {
-		enabled = false;
-	}
-
-	public String getName() {
-		return taskName;
-	}
-
-	public boolean isEnabled() {
-		return enabled;
-	}
-
-	public void newSignal(String updatedSignal) {
-		signal = updatedSignal;
-	}
-
-	public String getSignal() {
-		return signal;
-	}
-
-	public SignalType getType() {
-		return type;
-	}
-
+	//change local time
 	public void setElapseTime(LocalTime scheduleTime) {
 		Duration toAdjust = Duration.between(elapseTime.toLocalTime(), scheduleTime);
 		if(elapseTime.plus(toAdjust).isBefore(LocalDateTime.now())) {
@@ -72,26 +41,51 @@ public class ScheduledTask {
 		elapseTime = scheduleDateTime;
 	}
 
-	public LocalDateTime getElapseTime() {
-		return elapseTime;
-	}
-
-	//change the frequency once elapsed
-	public void changeFrequency(Duration newFrequency) {
-		frequency = newFrequency;
-	}
-
-	public boolean isElapsed() {
-		return elapseTime.isBefore(LocalDateTime.now());
-	}
-
-	//if this is a one time event, set it to disabled
+	//reset function (move forward 1 frequency). if task is one-time it is disabled
 	public void reset() {
 		if(!oneTime) {
 			elapseTime = elapseTime.plus(frequency);
 		} else {
 			enabled = false;
 		}
+	}
+
+	//setter/getter for enabled
+	public void enable() {
+		enabled = true;
+	}
+	public void disable() {
+		enabled = false;
+	}
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	//time functions
+	public LocalDateTime getElapseTime() {
+		return elapseTime;
+	}
+	public boolean isElapsed() {
+		return elapseTime.isBefore(LocalDateTime.now());
+	}
+
+	//signal functions
+	public void newSignal(String updatedSignal) {
+		signal = updatedSignal;
+	}
+	public String getSignal() {
+		return signal;
+	}
+
+	//general getters
+	public String getName() {
+		return taskName;
+	}
+	public SignalType getType() {
+		return type;
+	}
+	public void changeFrequency(Duration newFrequency) {
+		frequency = newFrequency;
 	}
 
 	public static class Builder {

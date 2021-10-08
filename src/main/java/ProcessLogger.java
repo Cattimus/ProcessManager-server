@@ -124,7 +124,6 @@ public class ProcessLogger {
 	void enableTimestamp() {
 		timestamp = true;
 	}
-
 	void disableTimestamp() {
 		timestamp = false;
 	}
