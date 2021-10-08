@@ -12,13 +12,10 @@ public class ManagedProcess {
 
 	private final List<String> processArgs        = new ArrayList<>();
 	private final List<ScheduledTask> tasks       = new ArrayList<>();
-	private final Map<String, String> userSignals = new HashMap<>();
-
 	private Thread schedulingThread;
 
 	private boolean running     	= false;
 	private boolean autoRestart 	= false;
-	private boolean logging     	= true;
 	private boolean scheduleRunning = false;
 
 	//TODO - offer full logging history to clients on connect
@@ -36,23 +33,7 @@ public class ManagedProcess {
 		log = new ProcessLogger(managerName);
 	}
 
-	//define a signal that may be sent to the process
-	public void addSignal(String name, String signal) {
-		if(!userSignals.containsKey(name)) {
-			userSignals.put(name, signal);
-		} else {
-			log.addMsg("ERROR", "ManagedProcess: signal " + '"' + name + '"' + " will not be added as it is already defined.");
-		}
-	}
-
-	//execute an existing signal with optional arguments
-	public void sendSignal(String name, String... args) {
-		if(userSignals.containsKey(name)) {
-			String rawSignal = userSignals.get(name);
-			io.write(rawSignal);
-		}
-	}
-
+	//add a new task to the task list
 	public void addTask(ScheduledTask task) {
 		tasks.add(task);
 		log.addMsg("New task has been added: '" + task.getName() + "'. Set to activate at: " + task.getElapseTime());
@@ -66,35 +47,6 @@ public class ManagedProcess {
 			schedulingThread = new Thread(this::scheduleThread);
 			schedulingThread.start();
 		}
-	}
-
-	//TODO - seems there's an intermittent bug with this function, sometimes returns null unexpectedly
-	private LocalDateTime waitTime() {
-		LocalDateTime toReturn = null;
-
-		//find the next task to be executed
-		for(var task : tasks) {
-			if(task.isEnabled() && task.isEnabled()) {
-				if(toReturn == null) {
-					toReturn = task.getElapseTime();
-				} else if(task.getElapseTime().isBefore(toReturn)) {
-					toReturn = task.getElapseTime();
-				}
-			}
-		}
-
-		return toReturn;
-	}
-
-	private ScheduledTask getElapsed() {
-		for(var task : tasks) {
-			if(task.isEnabled() && task.isElapsed()) {
-				return task;
-			}
-		}
-
-		//no elapsed task could be found
-		return null;
 	}
 
 	//logic behind scheduled events
@@ -149,37 +101,60 @@ public class ManagedProcess {
 		//if no tasks are pending, thread will exit
 		scheduleRunning = false;
 	}
+	//helper function for scheduling thread
+	private LocalDateTime waitTime() {
+		LocalDateTime toReturn = null;
 
-	//monitor process's running status from a separate thread
+		//find the next task to be executed
+		for(var task : tasks) {
+			if(task.isEnabled() && task.isEnabled()) {
+				if(toReturn == null) {
+					toReturn = task.getElapseTime();
+				} else if(task.getElapseTime().isBefore(toReturn)) {
+					toReturn = task.getElapseTime();
+				}
+			}
+		}
+
+		return toReturn;
+	}
+	//helper function for scheduling thread
+	private ScheduledTask getElapsed() {
+		for(var task : tasks) {
+			if(task.isEnabled() && task.isElapsed()) {
+				return task;
+			}
+		}
+
+		//no elapsed task could be found
+		return null;
+	}
+
 	//TODO - status thread needs to handle a process being restarted if autorestart is enabled
+	//monitor process's running status from a separate thread
 	private void statusThread() {
 		while(running) {
-
-			//run logging if required
-			if(logging) {
-				while(io.hasErr()) {
-					log.addMsg("STDERR", io.readErr());
-				}
-
-				while(io.hasOut()) {
-					log.addMsg("STDOUT", io.readOut());
-				}
+			while (io.hasErr()) {
+				log.addMsg("STDERR", io.readErr());
+			}
+			while (io.hasOut()) {
+				log.addMsg("STDOUT", io.readOut());
 			}
 
 			//program has crashed or been killed
-			if(!proc.isAlive()) {
+			if (!proc.isAlive()) {
 				log.addMsg("Process has exited unexpectedly.");
 				running = false;
 
-				if(autoRestart) {
+				if (autoRestart) {
 					start();
 				}
 
-			//Program is running but no action is required
 			} else {
+				//Program is running but no action is required
 				try {
 					TimeUnit.MILLISECONDS.sleep(50);
-				} catch(InterruptedException e) {
+				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
@@ -231,7 +206,7 @@ public class ManagedProcess {
 		}
 	}
 
-	//default restart process
+	//default restart process (unsafe)
 	public void restart() {
 		if(running) {
 			stop();
@@ -239,6 +214,7 @@ public class ManagedProcess {
 		start();
 	}
 
+	//process getter/setters
 	public long getPID() {
 		return proc.pid();
 	}
@@ -251,12 +227,8 @@ public class ManagedProcess {
 	public void disableAutorestart() {
 		autoRestart = false;
 	}
-	public void enableLogging() {
-		logging = true;
-	}
-	public void disableLogging() {
-		logging = false;
-	}
+
+	//logging getter/setters
 	public void disableTimestamp() {
 		log.disableTimestamp();
 	}
@@ -264,17 +236,9 @@ public class ManagedProcess {
 		log.enableTimestamp();
 	}
 	public void enableLogfile() {
-		if(!logging) {
-			logging = true;
-		}
-
 		log.enableLogfile();
 	}
 	public void enableLogfile(String path) {
-		if(!logging) {
-			logging = true;
-		}
-
 		log.enableLogfile(path);
 	}
 	public void disableLogfile() {
