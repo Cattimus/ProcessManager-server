@@ -2,4 +2,4 @@
 /target/
 /proc/
 /log/
-/secrets/
+/config/
