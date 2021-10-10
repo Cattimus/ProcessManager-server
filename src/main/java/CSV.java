@@ -9,6 +9,8 @@ import java.util.List;
    -All non-separator values are considered strings and will be deserialized as such by default
  */
 
+//TODO - serialization of various existing classes
+
 //helper class to handle working with CSV data
 public class CSV {
 	private String filePath;
@@ -37,8 +39,8 @@ public class CSV {
 					var fields = line.split("(?<!\\\\),");
 
 					//replace escaped separators
-					for(var field : fields) {
-						field.replace("\\,", ",");
+					for(int i = 0; i < fields.length; i++) {
+						fields[i] = fields[i].replaceAll("\\\\,", ",");
 					}
 
 					//add the line of our csv file to the collection
@@ -70,8 +72,15 @@ public class CSV {
 			BufferedWriter out = new BufferedWriter(new FileWriter(filePath));
 
 			for(var line: data) {
-				//create new CSV line
-				String outline = String.join(",", line);
+
+				//escape a copy of the line for writing to file
+				var escapedLine = new ArrayList<>(line);
+				for(var i = 0; i < escapedLine.size(); i++) {
+					escapedLine.set(i, escapedLine.get(i).replaceAll(",", "\\\\,"));
+				}
+
+				//append separators for writing
+				String outline = String.join(",", escapedLine);
 
 				//write line to file
 				out.write(outline + "\n");
