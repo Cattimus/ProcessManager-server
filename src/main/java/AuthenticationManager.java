@@ -1,89 +1,74 @@
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
-/* TEMPORARY FILE STRUCTURE
-   In the future, this will most likely be handled by a JSON file. However, as a temporary measure
-   this will be handled in a custom file format which will be described here.
+/* DATA STORAGE FILE STRUCTURE
+   Serialization has been decided to be conducted using CSV file format, as the external dependency of JSON is undesirable.
+   The Format of stored password hashes will be the following:
+   master password will be stored under the reserved username "master" - to be implemented later
 
-   The first line of this file will contain the master password hash (base64 encoded) followed by , and
-   the salt value used (also base 64 encoded) followed by a newline.
+   [username][hash][salt]
+   username, hash, salt
 
-   Subsequent lines will contain PAT hashes (base 64 encoded) followed by , and the salt value used during hashing,
-   of course also base 64 encoded. The number of recognized PAT tokens depends on this file for the short term.
-
-   In the future, it may be worthwhile to explore encrypting this file along with the global config file with
-   the master password for increased security. However, this may prove impractical. As such, this program should not be
-   exposed to any unsafe or potentially unsafe network.
+   Additional PAT hashes and salts may be stored on the same line, they will simply be appended to the line.
  */
 
+//TODO - check if username already exists in database before adding new user
 //TODO - need a secure method of distributing PAT, probably handled over TLS for client later
 
 public class AuthenticationManager {
-	private String filePath;
-	BufferedWriter out;
-	BufferedReader in;
+	CSV tokens;
 
 	AuthenticationManager(String file){
-		filePath = file;
-		File credentials = new File(filePath);
-		try {
-			if (!credentials.exists()) {
-				credentials.createNewFile();
+		tokens = new CSV(file);
+	}
+
+	//helper function to check if database already contains user
+	public boolean hasUser(String username) {
+		for(int i = 0; i < tokens.recordCount(); i++) {
+			if(tokens.getRecord(i).get(i).equals(username)) {
+				return true;
 			}
-
-			out = new BufferedWriter(new FileWriter(filePath, true));
-			in = new BufferedReader(new FileReader(filePath));
-		} catch(IOException e) {
-			System.err.println("Unable to create or open credentials file. Program must exit.");
-			System.exit(1);
 		}
+		return false;
 	}
 
-	//TODO - update to JSON serialization
-	//adds a hash to the storage file
-	public void addUser(String username, byte[] hash, byte[] salt) {
-		try {
-			//structure is username,passwordhash,salt
-			out.write(username + "," + Base64.getEncoder().encodeToString(hash) + "," + Base64.getEncoder().encodeToString(salt) + "\n");
-			out.flush();
-		} catch (IOException e) {
-			System.out.println("Unable to access credentials file. Cannot add new hash");
-			System.exit(1);
+	//adds a hash to the storage file returns true on success, false on collision
+	public boolean addUser(String username, byte[] hash, byte[] salt) {
+
+		if(!hasUser(username)) {
+			List<String> toAdd = new ArrayList<>();
+			toAdd.add(username);
+			toAdd.add(Base64.getEncoder().encodeToString(hash));
+			toAdd.add(Base64.getEncoder().encodeToString(salt));
+			tokens.addRecord(toAdd);
+			tokens.writeFile();
+			return true;
 		}
+
+		return false;
 	}
+
+	//check if the entered password matches hash on file
 	public boolean checkPassword(String username, String password) {
-		try {
-			in.reset();
-		} catch(IOException e) {
-			//This will happen if the file does not need to be reset
-		}
-
-		String line = "";
-		while(line != null) {
-			try {
-				line = in.readLine();
-			} catch (IOException e) {
-				System.err.println("Unable to read credentials file.");
-				System.exit(1);
-				break;
+		for(int i = 0; i < tokens.recordCount(); i++) {
+			var currentRecord = tokens.getRecord(i);
+			if(currentRecord.get(0).equals(username)) {
+				return checkPassword(
+						password.toCharArray(),
+						Base64.getDecoder().decode(currentRecord.get(1)),
+						Base64.getDecoder().decode(currentRecord.get(2))
+				);
 			}
-
-			if(line != null) {
-				var data = line.split(",");
-
-				if(data[0].equals(username)) {
-					return checkPassword(password.toCharArray(), Base64.getDecoder().decode(data[1]), Base64.getDecoder().decode(data[2]));
-				}
-			}
-
 		}
-
 		return false;
 	}
 
@@ -102,9 +87,7 @@ public class AuthenticationManager {
 		try {
 			secret = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
 			hash = secret.generateSecret(keySpec).getEncoded();
-		} catch (InvalidKeySpecException e) {
-			return null;
-		} catch(NoSuchAlgorithmException e) {
+		} catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
 			return null;
 		}
 
@@ -125,9 +108,7 @@ public class AuthenticationManager {
 		try {
 			secret = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
 			hash = secret.generateSecret(keySpec).getEncoded();
-		} catch (InvalidKeySpecException e) {
-			return false;
-		} catch(NoSuchAlgorithmException e) {
+		} catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
 			return false;
 		}
 
@@ -140,18 +121,20 @@ public class AuthenticationManager {
 	//generating and/or adding new PATs to the file will require authentication with the master password
 	public char[] genPAT() {
 		SecureRandom rand = new SecureRandom();
-		byte[] rawPAT = new byte[32];
-		rand.nextBytes(rawPAT);
 
-		return Base64.getEncoder().encodeToString(rawPAT).toCharArray();
-	}
-
-	public void destroy() {
-		try {
-			out.close();
-			in.close();
-		} catch(IOException e) {
-			//This doesn't matter because they're already closed
+		//generate an alphabet of accepted characters (all valid normal and special characters in ASCII but space)
+		StringBuilder alphabet = new StringBuilder();
+		for(char i = '!'; i <= '~'; i++) {
+			alphabet.append(i);
 		}
+		char[] charSource = alphabet.toString().toCharArray();
+
+		//generate a new 32 character PAT given the alphabet
+		char[] PAT = new char[32];
+		for(int i = 0; i < 32; i++) {
+			PAT[i] = charSource[rand.nextInt(charSource.length)];
+		}
+
+		return PAT;
 	}
 }
