@@ -19,7 +19,6 @@ public class ManagedProcess {
 	private boolean scheduleRunning = false;
 
 	//TODO - offer full logging history to clients on connect
-
 	ManagedProcess(String managerName, String procName) {
 		this.managerName = managerName;
 		processArgs.add(procName);
@@ -33,6 +32,7 @@ public class ManagedProcess {
 		log = new ProcessLogger(managerName);
 	}
 
+	//TODO - task list must be synchronized to avoid cross-thread conflicts
 	//add a new task to the task list
 	public void addTask(ScheduledTask task) {
 		tasks.add(task);
@@ -212,6 +212,23 @@ public class ManagedProcess {
 			stop();
 		}
 		start();
+	}
+
+	/* FORMAT
+	   "<proc>", [ManagedProcessName],  [arguments], [logfiledir], [autorestart] [tasks], "</proc>"
+	 */
+	public void serialize(List<String> record) {
+		record.add("<proc>");
+		record.add(managerName);
+		record.addAll(processArgs);
+		record.add(log.getDir());
+		record.add(Boolean.toString(autoRestart));
+
+		for(var task : tasks) {
+			task.serialize(record);
+		}
+
+		record.add("</proc>");
 	}
 
 	//process getter/setters

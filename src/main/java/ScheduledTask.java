@@ -1,6 +1,8 @@
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.List;
 
 public class ScheduledTask {
 	public enum SignalType{START, STOP, RESTART, SIGNAL, NONE}
@@ -48,6 +50,22 @@ public class ScheduledTask {
 		} else {
 			enabled = false;
 		}
+	}
+
+	/* FORMAT
+	   "<task>", taskname, signal, elapsetime, frequency, type, enabled, oneTime, "</task>"
+	 */
+	public void serialize(List<String> record) {
+		record.addAll(Arrays.asList("<task>",
+				taskName,
+				signal,
+				elapseTime.toString(),
+				frequency.toString(),
+				type.toString(),
+				Boolean.toString(enabled),
+				Boolean.toString(oneTime),
+				"</task>")
+		);
 	}
 
 	//setter/getter for enabled

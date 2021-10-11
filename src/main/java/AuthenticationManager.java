@@ -1,7 +1,5 @@
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -21,8 +19,8 @@ import java.util.List;
    Additional PAT hashes and salts may be stored on the same line, they will simply be appended to the line.
  */
 
-//TODO - check if username already exists in database before adding new user
 //TODO - need a secure method of distributing PAT, probably handled over TLS for client later
+//TODO - may need to rework master password system
 
 public class AuthenticationManager {
 	CSV tokens;

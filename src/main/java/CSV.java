@@ -10,6 +10,7 @@ import java.util.List;
  */
 
 //TODO - serialization of various existing classes
+//TODO - synchronization across multiple threads
 
 //helper class to handle working with CSV data
 public class CSV {
@@ -111,11 +112,5 @@ public class CSV {
 
 	public int recordCount() {
 		return data.size();
-	}
-
-
-	//support for CSV serialization of project types
-	public static class Serializer {
-
 	}
 }

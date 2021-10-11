@@ -127,4 +127,7 @@ public class ProcessLogger {
 	void disableTimestamp() {
 		timestamp = false;
 	}
+	public String getDir() {
+		return logFilePath;
+	}
 }
