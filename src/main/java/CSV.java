@@ -9,9 +9,6 @@ import java.util.List;
    -All non-separator values are considered strings and will be deserialized as such by default
  */
 
-//TODO - serialization of various existing classes
-//TODO - synchronization across multiple threads
-
 //helper class to handle working with CSV data
 public class CSV {
 	private String filePath;
@@ -113,4 +110,6 @@ public class CSV {
 	public int recordCount() {
 		return data.size();
 	}
+
+
 }

@@ -1,5 +1,7 @@
 import java.io.*;
 
+//TODO - Error messages must be reworked in this class, valid paths are sometimes classified as an error
+
 public class IOManager {
 	private final OutputStream out;
 	private final BufferedReader in;
@@ -18,7 +20,7 @@ public class IOManager {
 			out.write((data + "\n").getBytes());
 			out.flush();
 		} catch(IOException e) {
-			System.err.println("Could not write to process stdin.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 	}
 	public void write(byte[] data) {
@@ -26,7 +28,7 @@ public class IOManager {
 			out.write((new String(data) + "\n").getBytes());
 			out.flush();
 		} catch(IOException e) {
-			System.err.println("Could not write to process stdin.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 	}
 	public void write(char[] data) {
@@ -34,7 +36,7 @@ public class IOManager {
 			out.write((new String(data) + "\n").getBytes());
 			out.flush();
 		} catch(IOException e) {
-			System.err.println("Could not write to process stdin.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 	}
 
@@ -45,7 +47,7 @@ public class IOManager {
 		try {
 			line = in.readLine();
 		} catch(IOException e) {
-			System.err.println("Unable to read from process stdout.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 
 		return line;
@@ -57,7 +59,7 @@ public class IOManager {
 		try {
 			data = in.ready();
 		} catch(IOException e) {
-			System.err.println("Unable to access process stdout.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 
 		return data;
@@ -70,7 +72,7 @@ public class IOManager {
 		try {
 			line = err.readLine();
 		} catch(IOException e) {
-			System.err.println("Unable to read from process stdout.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 
 		return line;
@@ -82,7 +84,7 @@ public class IOManager {
 		try {
 			data = err.ready();
 		} catch(IOException e) {
-			System.err.println("Unable to access process stdout.");
+			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 
 		return data;

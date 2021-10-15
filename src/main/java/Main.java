@@ -25,13 +25,13 @@ public class Main {
 		test.addTask(ScheduledTask.Builder.newInstance("Graceful shutdown")
 				.sendSignal("quit gracefully")
 				.once()
-				.at(LocalTime.of(19,28,30))
+				.at(LocalTime.of(12,38))
 				.build());
 		test.start();
 
-		List<String> testString = new ArrayList<>();
-
-		test.serialize(testString);
+		List<String> testString = test.serialize();
 		System.out.println(testString);
+
+		test.stop();
 	}
 }

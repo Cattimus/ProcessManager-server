@@ -20,7 +20,8 @@ public class ProcessLogger {
 
 	//TODO - [URGENT] need a more graceful method of identifying different sources of log output
 	//TODO - remote logging
-	//TODO - log history without writing to file
+	//TODO - log history without writing to file or stdout
+	//TODO - priority logging messages, Different priority levels will be written to different sources but all will be saved in history
 
 	//sets up the logger for writing to a file instead of stdout
 	public void enableLogfile() {

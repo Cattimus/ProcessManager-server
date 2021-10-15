@@ -1,6 +1,7 @@
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,7 +56,9 @@ public class ScheduledTask {
 	/* FORMAT
 	   "<task>", taskname, signal, elapsetime, frequency, type, enabled, oneTime, "</task>"
 	 */
-	public void serialize(List<String> record) {
+	public List<String> serialize() {
+		List<String> record = new ArrayList<>();
+
 		record.addAll(Arrays.asList("<task>",
 				taskName,
 				signal,
@@ -66,6 +69,8 @@ public class ScheduledTask {
 				Boolean.toString(oneTime),
 				"</task>")
 		);
+
+		return record;
 	}
 
 	//setter/getter for enabled

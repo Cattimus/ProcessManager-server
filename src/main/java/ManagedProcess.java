@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+//TODO - clients must be able to reschedule existing tasks
+//TODO - offer full logging history to clients on connect
+
 public class ManagedProcess {
 	private String managerName;
 	public  IOManager io = null;
@@ -19,7 +22,6 @@ public class ManagedProcess {
 	private boolean autoRestart 	= false;
 	private boolean scheduleRunning = false;
 
-	//TODO - offer full logging history to clients on connect
 	ManagedProcess(String managerName, String procName) {
 		this.managerName = managerName;
 		processArgs.add(procName);
@@ -210,7 +212,8 @@ public class ManagedProcess {
 	/* FORMAT
 	   "<proc>", [ManagedProcessName],  [arguments], [logfiledir], [autorestart] [tasks], "</proc>"
 	 */
-	public void serialize(List<String> record) {
+	public List<String> serialize() {
+		List<String> record = new ArrayList<>();
 		record.add("<proc>");
 		record.add(managerName);
 		record.addAll(processArgs);
@@ -218,10 +221,12 @@ public class ManagedProcess {
 		record.add(Boolean.toString(autoRestart));
 
 		for(var task : tasks) {
-			task.serialize(record);
+			record.addAll(task.serialize());
 		}
 
 		record.add("</proc>");
+
+		return record;
 	}
 
 	//process getter/setters
