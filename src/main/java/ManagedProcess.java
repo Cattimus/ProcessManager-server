@@ -13,6 +13,7 @@ public class ManagedProcess {
 	private final List<String> processArgs        = new ArrayList<>();
 	private final List<ScheduledTask> tasks       = new ArrayList<>();
 	private Thread schedulingThread;
+	private Thread monitorThread;
 
 	private boolean running     	= false;
 	private boolean autoRestart 	= false;
@@ -63,7 +64,6 @@ public class ManagedProcess {
 				continue;
 			}
 
-			//TODO - monitoring thread needs to be informed if we're meddling with the process
 			ScheduledTask elapsed = getElapsed();
 			if (elapsed != null) {
 				switch (elapsed.getType()) {
@@ -130,7 +130,6 @@ public class ManagedProcess {
 		return null;
 	}
 
-	//TODO - status thread needs to be informed if the process is killed/restarted
 	//monitor process's running status from a separate thread
 	private void statusThread() {
 		while(running) {
@@ -144,7 +143,7 @@ public class ManagedProcess {
 			//program has crashed or been killed
 			if (!proc.isAlive()) {
 				log.addMsg("Process has exited unexpectedly.");
-				running = false;
+				stop();
 
 				if (autoRestart) {
 					start();
@@ -162,7 +161,7 @@ public class ManagedProcess {
 	}
 
 	//default stop process (unsafe, no saving)
-	public void stop() {
+	public synchronized void stop() {
 		if(running) {
 			log.addMsg("Process is stopping.");
 			io.destroy();
@@ -170,13 +169,11 @@ public class ManagedProcess {
 			running = false;
 			scheduleRunning = false;
 			schedulingThread.interrupt();
-		} else {
-			log.addMsg("ERROR", "Process: " + processArgs.get(0) + " is not running and will not be stopped.");
 		}
 	}
 
 	//default start process
-	public void start() {
+	public synchronized void start() {
 		if(!running) {
 			try {
 				log.addMsg("Process is starting.");
@@ -193,21 +190,19 @@ public class ManagedProcess {
 				io = new IOManager(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
 
 				//monitor process
-				new Thread(this::statusThread).start();
+				monitorThread = new Thread(this::statusThread);
+				monitorThread.start();
 
 			} catch (IOException e) {
 				log.addMsg("ERROR", "Unable to start process: " + processArgs.get(0) + ".");
 				e.printStackTrace();
 				running = false;
 			}
-		} else {
-			//Program has been started already (we don't want to double-start a process)
-			log.addMsg("ERROR", "Process: " + processArgs.get(0) + " is already running and will not be started.");
 		}
 	}
 
 	//default restart process (unsafe)
-	public void restart() {
+	public synchronized void restart() {
 		if(running) {
 			stop();
 		}
