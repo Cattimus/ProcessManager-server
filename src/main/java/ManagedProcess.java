@@ -10,8 +10,8 @@ public class ManagedProcess {
 	private Process proc = null;
 	private ProcessLogger log;
 
-	private final List<String> processArgs        = new ArrayList<>();
-	private final List<ScheduledTask> tasks       = new ArrayList<>();
+	private final List<String> processArgs  = new ArrayList<>();
+	private final List<ScheduledTask> tasks = Collections.synchronizedList(new ArrayList<>());
 	private Thread schedulingThread;
 	private Thread monitorThread;
 
@@ -33,7 +33,6 @@ public class ManagedProcess {
 		log = new ProcessLogger(managerName);
 	}
 
-	//TODO - task list must be synchronized to avoid cross-thread conflicts
 	//add a new task to the task list
 	public void addTask(ScheduledTask task) {
 		tasks.add(task);
@@ -142,7 +141,7 @@ public class ManagedProcess {
 
 			//program has crashed or been killed
 			if (!proc.isAlive()) {
-				log.addMsg("Process has exited unexpectedly.");
+				log.addMsg("Process has exited.");
 				stop();
 
 				if (autoRestart) {
@@ -163,7 +162,6 @@ public class ManagedProcess {
 	//default stop process (unsafe, no saving)
 	public synchronized void stop() {
 		if(running) {
-			log.addMsg("Process is stopping.");
 			io.destroy();
 			proc.destroy();
 			running = false;
