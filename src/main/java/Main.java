@@ -29,8 +29,7 @@ public class Main {
 				.build());
 		test.start();
 
-		List<String> testString = test.serialize();
-		System.out.println(testString);
+		System.out.println(test.serialize().toString());
 
 		test.stop();
 	}

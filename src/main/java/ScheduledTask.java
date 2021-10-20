@@ -4,6 +4,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.json.*;
 
 public class ScheduledTask {
 	public enum SignalType{START, STOP, RESTART, SIGNAL, NONE}
@@ -54,21 +55,23 @@ public class ScheduledTask {
 	}
 
 	/* FORMAT
-	   "<task>", taskname, signal, elapsetime, frequency, type, enabled, oneTime, "</task>"
+	   type: task
+	   name: taskName
+	   signal: signal
+	   elapse-time: standardized elapse time
+	   frequency: standardized frequency
+	   enabled: enabled(boolean)
+	   one-time: oneTime(boolean)
 	 */
-	public List<String> serialize() {
-		List<String> record = new ArrayList<>();
-
-		record.addAll(Arrays.asList("<task>",
-				taskName,
-				signal,
-				elapseTime.toString(),
-				frequency.toString(),
-				type.toString(),
-				Boolean.toString(enabled),
-				Boolean.toString(oneTime),
-				"</task>")
-		);
+	public JSONObject serialize() {
+		JSONObject record = new JSONObject();
+		record.put("type", "task");
+		record.put("name", taskName);
+		record.put("signal", signal);
+		record.put("elapse-time", elapseTime.toString());
+		record.put("frequency", frequency.toString());
+		record.put("enabled", enabled);
+		record.put("one-time", oneTime);
 
 		return record;
 	}

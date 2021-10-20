@@ -3,6 +3,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import org.json.*;
 
 //TODO - clients must be able to reschedule existing tasks
 //TODO - offer full logging history to clients on connect
@@ -210,21 +211,29 @@ public class ManagedProcess {
 	}
 
 	/* FORMAT
-	   "<proc>", [ManagedProcessName],  [arguments], [logfiledir], [autorestart] [tasks], "</proc>"
+	   type: process
+	   name: managerName
+	   args: processArgs(array of String)
+	   logging-dir: log.dir
+	   auto-restart: autoRestart(boolean)
+	   tasks: tasks(array of ScheduledTask)
 	 */
-	public List<String> serialize() {
-		List<String> record = new ArrayList<>();
-		record.add("<proc>");
-		record.add(managerName);
-		record.addAll(processArgs);
-		record.add(log.getDir());
-		record.add(Boolean.toString(autoRestart));
+	public JSONObject serialize() {
+		JSONObject record = new JSONObject();
+		record.put("type", "process");
+		record.put("name", managerName);
+		JSONArray args = new JSONArray();
+		args.putAll(processArgs);
+		record.put("args", processArgs);
+		record.put("logging-dir", log.getDir());
+		record.put("auto-restart", autoRestart);
+
+		JSONArray taskList = new JSONArray();
 
 		for(var task : tasks) {
-			record.addAll(task.serialize());
+			taskList.put(task.serialize());
 		}
-
-		record.add("</proc>");
+		record.put("tasks", taskList);
 
 		return record;
 	}
