@@ -1,16 +1,16 @@
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import java.security.spec.InvalidKeySpecException;
+import java.security.NoSuchAlgorithmException;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-import java.io.*;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.io.*;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /* DATA STORAGE FILE STRUCTURE
 
@@ -26,6 +26,8 @@ User:
  */
 
 //TODO - need a secure method of distributing PAT, probably handled over TLS for client later
+//TODO - handle null cases for reading from files
+//TODO - clear PATs for a user (will assign a new PAT)
 
 public class AuthenticationManager {
 	private class User {
@@ -54,95 +56,39 @@ public class AuthenticationManager {
 		masterUsername = username;
 	}
 
+	public void setMasterPass(String password) {
+		masterPasshash = toBase64(hashPassword(password.toCharArray()));
+	}
+
+	//master password challenge
+	public boolean checkMaster(String username, String password) {
+		var data = fromBase64(masterPasshash);
+		boolean result = checkHash(password.toCharArray(), data[0], data[1]);
+
+		if(username.equals(masterUsername)) {
+			return result;
+		}
+
+		return false;
+	}
+
+	//turn bytes to base64 encoded string
 	private String toBase64(byte[][] passhash) {
 		String hash = Base64.getEncoder().encodeToString(passhash[0]);
 		String salt = Base64.getEncoder().encodeToString(passhash[1]);
 		return (hash + "," + salt);
 	}
 
-	public void setMasterPasshash(String password) {
-		masterPasshash = toBase64(hashPassword(password.toCharArray()));
-	}
+	//return base64 encoded string to bytes
+	private byte[][] fromBase64(String passhash) {
+		var raw = passhash.split(",");
+		byte[] hash = Base64.getDecoder().decode(raw[0]);
+		byte[] salt = Base64.getDecoder().decode(raw[1]);
 
-	//deserialize from file
-	private void readData() {
-		var data = readFile();
-		masterUsername = data.getString("master-username");
-		masterPasshash = data.getString("master-passhash");
-
-		var users = data.getJSONArray("users");
-		for(int i = 0; i < users.length(); i++) {
-			var user = users.getJSONObject(i);
-
-			User current = new User();
-			current.username = user.getString("username");
-
-			//add user PATs
-			var PATs = user.getJSONArray("PATs");
-			for(int x = 0; x < PATs.length(); x++) {
-				current.PATs.add(PATs.getString(x));
-			}
-
-			//add user to the overall array
-			this.users.add(current);
-		}
-	}
-
-	public JSONObject toJSON() {
-		JSONObject toWrite = new JSONObject();
-		toWrite.put("master-username", masterUsername);
-		toWrite.put("master-passhash", masterPasshash);
-
-		//add all users to array
-		JSONArray users = new JSONArray();
-		for(var user: this.users) {
-			JSONObject current = new JSONObject();
-			current.put("username", user.username);
-
-			JSONArray PATs = new JSONArray();
-			PATs.putAll(user.PATs);
-			current.put("PATs", PATs);
-
-			users.put(current);
-		}
-
-		toWrite.put("users", users);
-
-		return toWrite;
-	}
-
-	public void debugprint() {
-		for(var user : users) {
-			System.out.println("Username: " + user.username);
-			System.out.println(user.PATs);
-		}
-	}
-
-	//file will overwrite previous file on every update
-	private void writeFile() {
-		var toWrite = toJSON();
-
-		try {
-			BufferedWriter out = new BufferedWriter(new FileWriter(FilePath));
-			out.write(toWrite.toString());
-			out.close();
-		} catch(IOException e) {
-			System.err.println("[MASTER]: Failed to write to auth file");
-		}
-	}
-
-	//read data from file into a JSON object
-	private JSONObject readFile() {
-		try {
-			BufferedReader in = new BufferedReader(new FileReader(FilePath));
-			String line = in.readLine();
-			var tokens = new JSONObject(line);
-			in.close();
-			return tokens;
-		} catch(IOException e) {
-			System.err.println("[MASTER]: Unable to read auth file");
-		}
-		return null;
+		byte[][] toReturn = new byte[2][];
+		toReturn[0] = hash;
+		toReturn[1] = salt;
+		return toReturn;
 	}
 
 	//helper function to check if database already contains user
@@ -152,7 +98,6 @@ public class AuthenticationManager {
 				return true;
 			}
 		}
-
 		return false;
 	}
 
@@ -182,6 +127,33 @@ public class AuthenticationManager {
 		return false;
 	}
 
+	//this will overwrite the previous file on every new addition
+	private void writeFile() {
+		var toWrite = toJSON();
+
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(FilePath));
+			out.write(toWrite.toString());
+			out.close();
+		} catch(IOException e) {
+			System.err.println("[MASTER]: Failed to write to auth file");
+		}
+	}
+
+	//read data from file into a JSON object
+	private JSONObject readFile() {
+		try {
+			BufferedReader in = new BufferedReader(new FileReader(FilePath));
+			String line = in.readLine();
+			var tokens = new JSONObject(line);
+			in.close();
+			return tokens;
+		} catch(IOException e) {
+			System.err.println("[MASTER]: Unable to read auth file");
+		}
+		return null;
+	}
+
 	//check if the entered password matches hash on file
 	public boolean checkPassword(String username, String password) {
 		for(var user : users) {
@@ -191,12 +163,10 @@ public class AuthenticationManager {
 
 				//check all recorded PATs
 				for(var pass : user.PATs) {
-					var raw = pass.split(",");
-					byte[] hash = Base64.getDecoder().decode(raw[0]);
-					byte[] salt = Base64.getDecoder().decode(raw[1]);
+					var data = fromBase64(pass);
 
 					//PAT and password match
-					boolean result = checkHash(password.toCharArray(), hash, salt);
+					boolean result = checkHash(password.toCharArray(), data[0], data[1]);
 					if(result) {
 						return true;
 					}
@@ -272,5 +242,53 @@ public class AuthenticationManager {
 		}
 
 		return PAT;
+	}
+
+	//deserialize from file
+	private void readData() {
+		var data = readFile();
+		masterUsername = data.getString("master-username");
+		masterPasshash = data.getString("master-passhash");
+
+		var users = data.getJSONArray("users");
+		for(int i = 0; i < users.length(); i++) {
+			var user = users.getJSONObject(i);
+
+			User current = new User();
+			current.username = user.getString("username");
+
+			//add user PATs
+			var PATs = user.getJSONArray("PATs");
+			for(int x = 0; x < PATs.length(); x++) {
+				current.PATs.add(PATs.getString(x));
+			}
+
+			//add user to the overall array
+			this.users.add(current);
+		}
+	}
+
+	//this function is exposed for debugging purposes
+	public JSONObject toJSON() {
+		JSONObject toWrite = new JSONObject();
+		toWrite.put("master-username", masterUsername);
+		toWrite.put("master-passhash", masterPasshash);
+
+		//add all users to array
+		JSONArray users = new JSONArray();
+		for(var user: this.users) {
+			JSONObject current = new JSONObject();
+			current.put("username", user.username);
+
+			JSONArray PATs = new JSONArray();
+			PATs.putAll(user.PATs);
+			current.put("PATs", PATs);
+
+			users.put(current);
+		}
+
+		toWrite.put("users", users);
+
+		return toWrite;
 	}
 }
