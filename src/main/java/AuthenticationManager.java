@@ -1,5 +1,9 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -9,69 +13,203 @@ import java.util.Base64;
 import java.util.List;
 
 /* DATA STORAGE FILE STRUCTURE
-   Serialization has been decided to be conducted using CSV file format, as the external dependency of JSON is undesirable.
-   The Format of stored password hashes will be the following:
-   master password will be stored under the reserved username "master" - to be implemented later
 
-   [username][hash][salt]
-   username, hash, salt
+Main object:
+	master-username: string
+	master-passhash: hash,salt
+	users: list(JSON object)
 
-   Additional PAT hashes and salts may be stored on the same line, they will simply be appended to the line.
+User:
+	username: string
+	PATs: array(full of PAT hashes) PAT,salt
+
  */
 
 //TODO - need a secure method of distributing PAT, probably handled over TLS for client later
-//TODO - may need to rework master password system
 
 public class AuthenticationManager {
-	CSV tokens;
+	private class User {
+		public String username;
+		public List<String> PATs = new ArrayList<>();
+	}
 
-	AuthenticationManager(String file){
-		tokens = new CSV(file);
+	private String FilePath;
+	private String masterUsername;
+	private String masterPasshash;
+	private List<User> users = new ArrayList<>();
+
+	AuthenticationManager(String file) {
+		FilePath = file;
+
+		File check = new File(file);
+		if(check.exists()) {
+			readData();
+		} else {
+			masterUsername = "";
+			masterPasshash = "";
+		}
+	}
+
+	public void setMasterUsername(String username) {
+		masterUsername = username;
+	}
+
+	private String toBase64(byte[][] passhash) {
+		String hash = Base64.getEncoder().encodeToString(passhash[0]);
+		String salt = Base64.getEncoder().encodeToString(passhash[1]);
+		return (hash + "," + salt);
+	}
+
+	public void setMasterPasshash(String password) {
+		masterPasshash = toBase64(hashPassword(password.toCharArray()));
+	}
+
+	//deserialize from file
+	private void readData() {
+		var data = readFile();
+		masterUsername = data.getString("master-username");
+		masterPasshash = data.getString("master-passhash");
+
+		var users = data.getJSONArray("users");
+		for(int i = 0; i < users.length(); i++) {
+			var user = users.getJSONObject(i);
+
+			User current = new User();
+			current.username = user.getString("username");
+
+			//add user PATs
+			var PATs = user.getJSONArray("PATs");
+			for(int x = 0; x < PATs.length(); x++) {
+				current.PATs.add(PATs.getString(x));
+			}
+
+			//add user to the overall array
+			this.users.add(current);
+		}
+	}
+
+	public JSONObject toJSON() {
+		JSONObject toWrite = new JSONObject();
+		toWrite.put("master-username", masterUsername);
+		toWrite.put("master-passhash", masterPasshash);
+
+		//add all users to array
+		JSONArray users = new JSONArray();
+		for(var user: this.users) {
+			JSONObject current = new JSONObject();
+			current.put("username", user.username);
+
+			JSONArray PATs = new JSONArray();
+			PATs.putAll(user.PATs);
+			current.put("PATs", PATs);
+
+			users.put(current);
+		}
+
+		toWrite.put("users", users);
+
+		return toWrite;
+	}
+
+	public void debugprint() {
+		for(var user : users) {
+			System.out.println("Username: " + user.username);
+			System.out.println(user.PATs);
+		}
+	}
+
+	//file will overwrite previous file on every update
+	private void writeFile() {
+		var toWrite = toJSON();
+
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(FilePath));
+			out.write(toWrite.toString());
+			out.close();
+		} catch(IOException e) {
+			System.err.println("[MASTER]: Failed to write to auth file");
+		}
+	}
+
+	//read data from file into a JSON object
+	private JSONObject readFile() {
+		try {
+			BufferedReader in = new BufferedReader(new FileReader(FilePath));
+			String line = in.readLine();
+			var tokens = new JSONObject(line);
+			in.close();
+			return tokens;
+		} catch(IOException e) {
+			System.err.println("[MASTER]: Unable to read auth file");
+		}
+		return null;
 	}
 
 	//helper function to check if database already contains user
 	public boolean hasUser(String username) {
-		for(int i = 0; i < tokens.recordCount(); i++) {
-			if(tokens.getRecord(i).get(i).equals(username)) {
+		for(var user: users) {
+			if(user.username.equals(username)) {
 				return true;
 			}
 		}
+
 		return false;
 	}
 
 	//adds a hash to the storage file returns true on success, false on collision
-	public boolean addUser(String username, byte[] hash, byte[] salt) {
-
+	public boolean addUser(String username, String password) {
 		if(!hasUser(username)) {
-			List<String> toAdd = new ArrayList<>();
-			toAdd.add(username);
-			toAdd.add(Base64.getEncoder().encodeToString(hash));
-			toAdd.add(Base64.getEncoder().encodeToString(salt));
-			tokens.addRecord(toAdd);
-			tokens.writeFile();
+			User current = new User();
+			current.username = username;
+			current.PATs.add(toBase64(hashPassword(password.toCharArray())));
+			users.add(current);
+			writeFile();
 			return true;
 		}
 
 		return false;
 	}
 
-	//check if the entered password matches hash on file
-	public boolean checkPassword(String username, String password) {
-		for(int i = 0; i < tokens.recordCount(); i++) {
-			var currentRecord = tokens.getRecord(i);
-			if(currentRecord.get(0).equals(username)) {
-				return checkPassword(
-						password.toCharArray(),
-						Base64.getDecoder().decode(currentRecord.get(1)),
-						Base64.getDecoder().decode(currentRecord.get(2))
-				);
+	//add new PAT to existing user
+	public boolean addPAT(String username, String PAT) {
+		for(var user : users) {
+			if(user.username.equals(username)) {
+				user.PATs.add(toBase64(hashPassword(PAT.toCharArray())));
+				writeFile();
+				return true;
 			}
 		}
 		return false;
 	}
 
+	//check if the entered password matches hash on file
+	public boolean checkPassword(String username, String password) {
+		for(var user : users) {
+
+			//username has a match
+			if(user.username.equals(username)) {
+
+				//check all recorded PATs
+				for(var pass : user.PATs) {
+					var raw = pass.split(",");
+					byte[] hash = Base64.getDecoder().decode(raw[0]);
+					byte[] salt = Base64.getDecoder().decode(raw[1]);
+
+					//PAT and password match
+					boolean result = checkHash(password.toCharArray(), hash, salt);
+					if(result) {
+						return true;
+					}
+				}
+			}
+		}
+
+		//no matches found for user
+		return false;
+	}
+
 	//generate a password hash and salt value (for storage and later comparison)
-	public byte[][] hashPassword(char[] password) {
+	private byte[][] hashPassword(char[] password) {
 		SecureRandom rand = new SecureRandom();
 		byte[] salt = new byte[32];
 		rand.nextBytes(salt);
@@ -96,7 +234,7 @@ public class AuthenticationManager {
 		return toReturn;
 	}
 
-	private boolean checkPassword(char[] password, byte[] passhash, byte[] salt) {
+	private boolean checkHash(char[] password, byte[] passhash, byte[] salt) {
 		//PBKDF2 with HMAC sha256 310,000 iterations (standard practice at the time of writing)
 		PBEKeySpec keySpec = new PBEKeySpec(password, salt, 310000, 256);
 		byte[] hash;
@@ -117,7 +255,7 @@ public class AuthenticationManager {
 	//generate a PAT (personal access token) that will allow a user to connect in lieu of a password
 	//this will be passed to the standard hashPassword and checkPassword functions, only the hash will be stored long-term
 	//generating and/or adding new PATs to the file will require authentication with the master password
-	public char[] genPAT() {
+	public static char[] genPAT() {
 		SecureRandom rand = new SecureRandom();
 
 		//generate an alphabet of accepted characters (all valid normal and special characters in ASCII but space)
