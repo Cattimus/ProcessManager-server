@@ -60,6 +60,27 @@ public class AuthenticationManager {
 		masterPasshash = toBase64(hashPassword(password.toCharArray()));
 	}
 
+	//rest all tokens
+	public void clearPATs(String username) {
+		var user = getUser(username);
+		if(user == null) {
+			return;
+		}
+
+		user.PATs.clear();
+	}
+
+	//find a user based on username
+	private User getUser(String username) {
+		for(var user : users) {
+			if(user.username.equals(username)) {
+				return user;
+			}
+		}
+
+		return null;
+	}
+
 	//master password challenge
 	public boolean checkMaster(String username, String password) {
 		var data = fromBase64(masterPasshash);
@@ -117,14 +138,14 @@ public class AuthenticationManager {
 
 	//add new PAT to existing user
 	public boolean addPAT(String username, String PAT) {
-		for(var user : users) {
-			if(user.username.equals(username)) {
-				user.PATs.add(toBase64(hashPassword(PAT.toCharArray())));
-				writeFile();
-				return true;
-			}
+		User user = getUser(username);
+		if(user == null) {
+			return false;
 		}
-		return false;
+
+		user.PATs.add(toBase64(hashPassword(PAT.toCharArray())));
+		writeFile();
+		return true;
 	}
 
 	//this will overwrite the previous file on every new addition
@@ -156,21 +177,19 @@ public class AuthenticationManager {
 
 	//check if the entered password matches hash on file
 	public boolean checkPassword(String username, String password) {
-		for(var user : users) {
+		var user = getUser(username);
+		if(user == null) {
+			return false;
+		}
 
-			//username has a match
-			if(user.username.equals(username)) {
+		//check all recorded PATs
+		for(var pass : user.PATs) {
+			var data = fromBase64(pass);
 
-				//check all recorded PATs
-				for(var pass : user.PATs) {
-					var data = fromBase64(pass);
-
-					//PAT and password match
-					boolean result = checkHash(password.toCharArray(), data[0], data[1]);
-					if(result) {
-						return true;
-					}
-				}
+			//PAT and password match
+			boolean result = checkHash(password.toCharArray(), data[0], data[1]);
+			if(result) {
+				return true;
 			}
 		}
 
