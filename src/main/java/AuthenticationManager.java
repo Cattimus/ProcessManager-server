@@ -26,19 +26,17 @@ User:
  */
 
 //TODO - need a secure method of distributing PAT, probably handled over TLS for client later
-//TODO - handle null cases for reading from files
-//TODO - clear PATs for a user (will assign a new PAT)
 
 public class AuthenticationManager {
-	private class User {
+	private static class User {
 		public String username;
-		public List<String> PATs = new ArrayList<>();
+		public final List<String> PATs = new ArrayList<>();
 	}
 
 	private String FilePath;
 	private String masterUsername;
 	private String masterPasshash;
-	private List<User> users = new ArrayList<>();
+	private final List<User> users = new ArrayList<>();
 
 	AuthenticationManager(String file) {
 		FilePath = file;

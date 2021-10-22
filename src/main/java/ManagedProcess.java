@@ -10,9 +10,9 @@ import org.json.*;
 
 public class ManagedProcess {
 	private String managerName;
-	public  IOManager io = null;
+	private  IOManager io = null;
 	private Process proc = null;
-	private ProcessLogger log;
+	private final ProcessLogger log;
 
 	private final List<String> processArgs  = new ArrayList<>();
 	private final List<ScheduledTask> tasks = Collections.synchronizedList(new ArrayList<>());

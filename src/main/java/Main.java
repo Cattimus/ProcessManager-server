@@ -20,7 +20,7 @@ public class Main {
 		public static String logDirectory;    //directory where logs are written (if enabled)
 	}
 
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) {
 		ManagedProcess test = new ManagedProcess("test", "python3", "proc/main.py");
 		test.addTask(ScheduledTask.Builder.newInstance("Graceful shutdown")
 				.sendSignal("quit gracefully")
@@ -32,5 +32,6 @@ public class Main {
 		System.out.println(test.serialize().toString());
 
 		test.stop();
+
 	}
 }
