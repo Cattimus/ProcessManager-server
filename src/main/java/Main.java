@@ -1,7 +1,3 @@
-import java.net.Authenticator;
-import java.security.AuthProvider;
-import java.time.LocalTime;
-import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
@@ -20,16 +16,17 @@ public class Main {
 		public static String logDirectory;    //directory where logs are written (if enabled)
 	}
 
-	public static void main(String[] args) {
-		ManagedProcess test = new ManagedProcess("test", "python3", "proc/main.py");
-		test.addTask(ScheduledTask.Builder.newInstance("Graceful shutdown")
-				.sendSignal("quit gracefully")
-				.once()
-				.at(LocalTime.of(12,38))
-				.build());
+	public static void main(String[] args) throws InterruptedException{
+		Proc test = new Proc("test", "python3", "proc/main.py");
 		test.start();
 
-		System.out.println(test.serialize().toString());
+		while(!test.isRunning()) {
+			TimeUnit.MILLISECONDS.sleep(1);
+		}
+
+		test.sendSignal("quit gracefully");
+
+		TimeUnit.MILLISECONDS.sleep(500);
 
 		test.stop();
 

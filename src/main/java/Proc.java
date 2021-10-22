@@ -8,14 +8,14 @@ import org.json.*;
 //TODO - clients must be able to reschedule existing tasks
 //TODO - offer full logging history to clients on connect
 
-public class ManagedProcess {
+public class Proc {
 	private String managerName;
-	private  IOManager io = null;
+	private ProcIO io = null;
 	private Process proc = null;
-	private final ProcessLogger log;
+	private final ProcLog log;
 
 	private final List<String> processArgs  = new ArrayList<>();
-	private final List<ScheduledTask> tasks = Collections.synchronizedList(new ArrayList<>());
+	private final List<Task> tasks = Collections.synchronizedList(new ArrayList<>());
 	private Thread schedulingThread;
 	private Thread monitorThread;
 
@@ -23,21 +23,21 @@ public class ManagedProcess {
 	private boolean autoRestart 	= false;
 	private boolean scheduleRunning = false;
 
-	ManagedProcess(String managerName, String procName) {
+	Proc(String managerName, String procName) {
 		this.managerName = managerName;
 		processArgs.add(procName);
-		log = new ProcessLogger(managerName);
+		log = new ProcLog(managerName);
 	}
 
-	ManagedProcess(String managerName, String procName, String... procArgs) {
+	Proc(String managerName, String procName, String... procArgs) {
 		this.managerName = managerName;
 		processArgs.add(procName);
 		processArgs.addAll(Arrays.asList(procArgs));
-		log = new ProcessLogger(managerName);
+		log = new ProcLog(managerName);
 	}
 
 	//add a new task to the task list
-	public void addTask(ScheduledTask task) {
+	public void addTask(Task task) {
 		tasks.add(task);
 		log.addMsg("New task has been added: '" + task.getName() + "'. Set to activate at: " + task.getElapseTime());
 
@@ -50,6 +50,11 @@ public class ManagedProcess {
 			schedulingThread = new Thread(this::scheduleThread);
 			schedulingThread.start();
 		}
+	}
+
+	//send signal directly to process (without having to build a scheduledtask
+	public void sendSignal(String signal) {
+		io.write(signal);
 	}
 
 	//logic behind scheduled events
@@ -66,8 +71,9 @@ public class ManagedProcess {
 				continue;
 			}
 
-			ScheduledTask elapsed = getElapsed();
+			Task elapsed = getElapsed();
 			if (elapsed != null) {
+				log.addMsg("TASK", "'" + elapsed.getName() + "' has activated.");
 				switch (elapsed.getType()) {
 					case NONE:
 						break;
@@ -88,7 +94,6 @@ public class ManagedProcess {
 						io.write(elapsed.getSignal());
 						break;
 				}
-				log.addMsg("TASK", "'" + elapsed.getName() + "' has activated.");
 				elapsed.reset();
 
 				//remove if one-time task
@@ -121,7 +126,7 @@ public class ManagedProcess {
 		return toReturn;
 	}
 	//helper function for scheduling thread
-	private ScheduledTask getElapsed() {
+	private Task getElapsed() {
 		for(var task : tasks) {
 			if(task.isEnabled() && task.isElapsed()) {
 				return task;
@@ -169,7 +174,10 @@ public class ManagedProcess {
 			proc.destroy();
 			running = false;
 			scheduleRunning = false;
-			schedulingThread.interrupt();
+
+			if(schedulingThread != null) {
+				schedulingThread.interrupt();
+			}
 		}
 	}
 
@@ -188,7 +196,7 @@ public class ManagedProcess {
 				proc = temp.start();
 
 				//create IO manager for process
-				io = new IOManager(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
+				io = new ProcIO(proc.getOutputStream(), proc.getInputStream(), proc.getErrorStream());
 
 				//monitor process
 				monitorThread = new Thread(this::statusThread);

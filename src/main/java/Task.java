@@ -3,7 +3,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import org.json.*;
 
-public class ScheduledTask {
+public class Task {
 	public enum SignalType{START, STOP, RESTART, SIGNAL, NONE}
 	private LocalDateTime elapseTime; //the local time the task is set to activate next
 	private String signal;            //this signal will be sent to the process upon elapse
@@ -13,7 +13,7 @@ public class ScheduledTask {
 	private boolean enabled;		  //signals if task is active or inactive (inactive tasks are automatically removed)
 	private boolean oneTime;		  //signals if the task should reactivate itself upon reset()
 
-	ScheduledTask(Builder toCopy) {
+	Task(Builder toCopy) {
 		type 		= toCopy.type;
 		signal      = toCopy.signal;
 		enabled     = toCopy.enabled;
@@ -208,8 +208,8 @@ public class ScheduledTask {
 		}
 
 		//return built object
-		public ScheduledTask build() {
-			return new ScheduledTask(this);
+		public Task build() {
+			return new Task(this);
 		}
 
 	}

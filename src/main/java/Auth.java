@@ -27,7 +27,7 @@ User:
 
 //TODO - need a secure method of distributing PAT, probably handled over TLS for client later
 
-public class AuthenticationManager {
+public class Auth {
 	private static class User {
 		public String username;
 		public final List<String> PATs = new ArrayList<>();
@@ -38,7 +38,7 @@ public class AuthenticationManager {
 	private String masterPasshash;
 	private final List<User> users = new ArrayList<>();
 
-	AuthenticationManager(String file) {
+	Auth(String file) {
 		FilePath = file;
 
 		File check = new File(file);

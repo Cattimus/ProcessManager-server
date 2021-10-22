@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class ProcessLogger {
+public class ProcLog {
 	private String logFilePath;
 	private final String managerID;
 	private BufferedWriter logOut = null;
@@ -13,7 +13,7 @@ public class ProcessLogger {
 	private boolean logfile = false;
 	private boolean timestamp = true;
 
-	ProcessLogger(String managerName) {
+	ProcLog(String managerName) {
 		logFilePath = managerName + ".log";
 		managerID = managerName;
 	}

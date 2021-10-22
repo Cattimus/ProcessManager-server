@@ -2,20 +2,20 @@ import java.io.*;
 
 //TODO - Error messages must be reworked in this class, valid paths are sometimes classified as an error
 
-public class IOManager {
+public class ProcIO {
 	private final OutputStream out;
 	private final BufferedReader in;
 	private final BufferedReader err;
 
 	//starts IO threads and assigns default values
-	IOManager(OutputStream outstream, InputStream instream, InputStream errstream) {
+	ProcIO(OutputStream outstream, InputStream instream, InputStream errstream) {
 		out = outstream;
 		in = new BufferedReader(new InputStreamReader(instream));
 		err = new BufferedReader(new InputStreamReader(errstream));
 	}
 
 	//write message to process stdin
-	public void write(String data) {
+	public synchronized void write(String data) {
 		try {
 			out.write((data + "\n").getBytes());
 			out.flush();
@@ -23,7 +23,7 @@ public class IOManager {
 			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 	}
-	public void write(byte[] data) {
+	public synchronized void write(byte[] data) {
 		try {
 			out.write((new String(data) + "\n").getBytes());
 			out.flush();
@@ -31,7 +31,7 @@ public class IOManager {
 			//This will happen if the IO channel is closed, log messages will just be clutter
 		}
 	}
-	public void write(char[] data) {
+	public synchronized void write(char[] data) {
 		try {
 			out.write((new String(data) + "\n").getBytes());
 			out.flush();
@@ -41,7 +41,7 @@ public class IOManager {
 	}
 
 	//read line from process stdout
-	public String readOut() {
+	public synchronized String readOut() {
 		String line = null;
 
 		try {
@@ -54,7 +54,7 @@ public class IOManager {
 	}
 
 	//check if stdout has data
-	public boolean hasOut() {
+	public synchronized boolean hasOut() {
 		boolean data = false;
 		try {
 			data = in.ready();
@@ -66,7 +66,7 @@ public class IOManager {
 	}
 
 	//read line from stderr
-	public String readErr() {
+	public synchronized String readErr() {
 		String line = null;
 
 		try {
@@ -79,7 +79,7 @@ public class IOManager {
 	}
 
 	//check if stderr has data
-	public boolean hasErr() {
+	public synchronized boolean hasErr() {
 		boolean data = false;
 		try {
 			data = err.ready();
@@ -91,7 +91,7 @@ public class IOManager {
 	}
 
 	//close output to stdin
-	public void closeOut() {
+	public synchronized void closeOut() {
 		try {
 			out.close();
 		} catch(IOException e) {
@@ -100,7 +100,7 @@ public class IOManager {
 	}
 
 	//close input from stdout
-	public void closeIn() {
+	public synchronized void closeIn() {
 		try {
 			in.close();
 		} catch(IOException e) {
@@ -109,7 +109,7 @@ public class IOManager {
 	}
 
 	//close input from stderr
-	public void closeErr() {
+	public synchronized void closeErr() {
 		try {
 			err.close();
 		} catch(IOException e) {
@@ -118,7 +118,7 @@ public class IOManager {
 	}
 
 	//close all outputs and inputs
-	public void destroy() {
+	public synchronized void destroy() {
 		closeOut();
 		closeIn();
 		closeErr();
