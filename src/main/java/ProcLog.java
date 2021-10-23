@@ -17,6 +17,7 @@ public class ProcLog {
 	private boolean stdout = false;
 
 	private final Deque<String> logCache = new LinkedList<String>();
+	private int cacheLimit = 1024;
 
 	ProcLog(String managerName) {
 		logFilePath = managerName + ".log";
@@ -93,7 +94,7 @@ public class ProcLog {
 	private void cache(String msg) {
 		logCache.addLast(msg);
 
-		if(logCache.size() > 1024) {
+		if(logCache.size() > cacheLimit) {
 			logCache.removeFirst();
 		}
 
@@ -146,10 +147,10 @@ public class ProcLog {
 		cache(currentTime + "[" + managerID + "][" + info + "]: " + msg);
 	}
 
-	void enableTimestamp() {
+	public void enableTimestamp() {
 		timestamp = true;
 	}
-	void disableTimestamp() {
+	public void disableTimestamp() {
 		timestamp = false;
 	}
 	public String getDir() {
@@ -160,5 +161,16 @@ public class ProcLog {
 	}
 	public void disableStdout() {
 		stdout = false;
+	}
+	public int getCacheLimit() {
+		return cacheLimit;
+	}
+	public void setCacheLimit(int limit) {
+		cacheLimit = limit;
+
+		//to prevent odd behavior from negative caching limits
+		if(cacheLimit < 1024) {
+			cacheLimit = 1024;
+		}
 	}
 }
