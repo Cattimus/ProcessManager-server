@@ -4,6 +4,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Deque;
+import java.util.LinkedList;
 
 public class ProcLog {
 	private String logFilePath;
@@ -12,15 +14,17 @@ public class ProcLog {
 
 	private boolean logfile = false;
 	private boolean timestamp = true;
+	private boolean stdout = false;
+
+	private final Deque<String> logCache = new LinkedList<String>();
 
 	ProcLog(String managerName) {
 		logFilePath = managerName + ".log";
 		managerID = managerName;
 	}
 
+	//TODO - dump cache to file efficiently instead of writing one at a time
 	//TODO - [URGENT] need a more graceful method of identifying different sources of log output
-	//TODO - remote logging
-	//TODO - log history without writing to file or stdout
 	//TODO - priority logging messages, Different priority levels will be written to different sources but all will be saved in history
 
 	//sets up the logger for writing to a file instead of stdout
@@ -85,6 +89,44 @@ public class ProcLog {
 		}
 	}
 
+	//add message to the cache and automatically remove expired messages
+	private void cache(String msg) {
+		logCache.addLast(msg);
+
+		if(logCache.size() > 1024) {
+			logCache.removeFirst();
+		}
+
+		//logfiles and stdout are updated upon new message cached
+		if(logfile) {
+			try {
+				logOut.write(msg + "\n");
+				logOut.flush();
+			} catch(IOException e) {
+				System.err.println(managerID + ": unable to write to logfile.");
+			}
+		}
+		if(stdout) {
+			System.out.println(msg);
+		}
+	}
+
+	//print message queue
+	public void printCache() {
+		System.out.println("Cache size: " + logCache.size());
+
+		for(var msg : logCache) {
+			System.out.println(msg);
+		}
+
+		logCache.clear();
+	}
+
+	//return the current iteration of the cache for sending to clients
+	public String[] getCache() {
+		return logCache.toArray(new String[logCache.size()]);
+	}
+
 	//add log entry (stdout)
 	public void addMsg(String msg) {
 		String currentTime = "";
@@ -92,16 +134,7 @@ public class ProcLog {
 			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy HH:mm:ss.SS - "));
 		}
 
-		if(logfile) {
-			try {
-				logOut.write(currentTime + msg + "\n");
-				logOut.flush();
-			} catch(IOException e) {
-				System.err.println(managerID + ": unable to write to logfile.");
-			}
-		} else {
-			System.out.println(currentTime + "[" + managerID + "]: " + msg);
-		}
+		cache(currentTime + "[" + managerID + "]: " + msg);
 	}
 
 	public void addMsg(String info, String msg) {
@@ -110,16 +143,7 @@ public class ProcLog {
 			currentTime = (LocalDateTime.now()).format(DateTimeFormatter.ofPattern("MM-dd-yy HH:mm:ss.SS - "));
 		}
 
-		if(logfile) {
-			try {
-				logOut.write(currentTime + "[" + managerID + "][" + info + "]: " + msg + "\n");
-				logOut.flush();
-			} catch(IOException e) {
-				System.err.println(managerID + ": unable to write to logfile.");
-			}
-		} else {
-			System.out.println(currentTime + "[" + managerID + "][" + info + "]: " + msg);
-		}
+		cache(currentTime + "[" + managerID + "][" + info + "]: " + msg);
 	}
 
 	void enableTimestamp() {
@@ -130,5 +154,11 @@ public class ProcLog {
 	}
 	public String getDir() {
 		return logFilePath;
+	}
+	public void enableStdout() {
+		stdout = true;
+	}
+	public void disableStdout() {
+		stdout = false;
 	}
 }

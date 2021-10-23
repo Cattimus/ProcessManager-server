@@ -276,4 +276,13 @@ public class Proc {
 	public void disableLogfile() {
 		log.disableLogFile();
 	}
+	public void enableStdout() {
+		log.enableStdout();
+	}
+	public void disableStdout() {
+		log.disableStdout();
+	}
+	public String[] getLog() {
+		return log.getCache();
+	}
 }
