@@ -1,7 +1,5 @@
 import java.io.*;
 
-//TODO - Error messages must be reworked in this class, valid paths are sometimes classified as an error
-
 public class ProcIO {
 	private final OutputStream out;
 	private final BufferedReader in;

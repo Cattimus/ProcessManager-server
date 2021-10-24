@@ -25,7 +25,6 @@ public class ProcLog {
 	}
 
 	//TODO - dump cache to file efficiently instead of writing one at a time
-	//TODO - [URGENT] need a more graceful method of identifying different sources of log output
 	//TODO - priority logging messages, Different priority levels will be written to different sources but all will be saved in history
 
 	//sets up the logger for writing to a file instead of stdout

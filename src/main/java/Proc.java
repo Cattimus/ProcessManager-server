@@ -7,6 +7,7 @@ import org.json.*;
 
 //TODO - clients must be able to reschedule existing tasks
 //TODO - offer full logging history to clients on connect
+//TODO - log cache must be cleared at every start()
 
 public class Proc {
 	private String managerName;
