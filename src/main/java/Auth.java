@@ -73,17 +73,6 @@ public class Auth {
 		}
 	}
 
-	//find a user based on username
-	private User getUser(String username) {
-		for(var user : users) {
-			if(user.username.equals(username)) {
-				return user;
-			}
-		}
-
-		return null;
-	}
-
 	//change a password for a user(requires authentication)
 	public void changePass(String username, String currentPass, String newPass) {
 		var user = getUser(username);
@@ -106,6 +95,33 @@ public class Auth {
 
 		if(checkPassword(username, currentPass)) {
 			user.username = newUsername;
+			writeFile();
+		}
+	}
+
+	//adds a hash to the storage file returns true on success, false on collision
+	public boolean addUser(String username, String password) {
+		if(!hasUser(username)) {
+			User current = new User();
+			current.username = username;
+			current.passhash = toBase64(hashPassword(password.toCharArray()));
+			users.add(current);
+			writeFile();
+			return true;
+		}
+
+		return false;
+	}
+
+	//remove a user (requires master authentication)
+	public void delUser(String username, String masterUsername, String masterPassword) {
+		var user = getUser(username);
+		if(user == null) {
+			return;
+		}
+
+		if(checkMaster(masterUsername, masterPassword)) {
+			users.remove(user);
 			writeFile();
 		}
 	}
@@ -141,41 +157,25 @@ public class Auth {
 		return toReturn;
 	}
 
+	//find a user based on username
+	private User getUser(String username) {
+		for(var user : users) {
+			if(user.username.equals(username)) {
+				return user;
+			}
+		}
+
+		return null;
+	}
+
 	//helper function to check if database already contains user
-	public boolean hasUser(String username) {
+	private boolean hasUser(String username) {
 		for(var user: users) {
 			if(user.username.equals(username)) {
 				return true;
 			}
 		}
 		return false;
-	}
-
-	//adds a hash to the storage file returns true on success, false on collision
-	public boolean addUser(String username, String password) {
-		if(!hasUser(username)) {
-			User current = new User();
-			current.username = username;
-			current.passhash = toBase64(hashPassword(password.toCharArray()));
-			users.add(current);
-			writeFile();
-			return true;
-		}
-
-		return false;
-	}
-
-	//remove a user (requires master authentication)
-	public void delUser(String username, String masterUsername, String masterPassword) {
-		var user = getUser(username);
-		if(user == null) {
-			return;
-		}
-
-		if(checkMaster(masterUsername, masterPassword)) {
-			users.remove(user);
-			writeFile();
-		}
 	}
 
 	//this will overwrite the previous file on every new addition
@@ -257,26 +257,6 @@ public class Auth {
 
 		//check if password hashes match (hopefully mitigating timing attacks)
 		return MessageDigest.isEqual(hash, passhash);
-	}
-
-	//PATs have been removed but this function will remain in case it's needed later
-	public static char[] genPAT() {
-		SecureRandom rand = new SecureRandom();
-
-		//generate an alphabet of accepted characters (all valid normal and special characters in ASCII but space)
-		StringBuilder alphabet = new StringBuilder();
-		for(char i = '!'; i <= '~'; i++) {
-			alphabet.append(i);
-		}
-		char[] charSource = alphabet.toString().toCharArray();
-
-		//generate a new 32 character PAT given the alphabet
-		char[] PAT = new char[32];
-		for(int i = 0; i < 32; i++) {
-			PAT[i] = charSource[rand.nextInt(charSource.length)];
-		}
-
-		return PAT;
 	}
 
 	//deserialize from file
