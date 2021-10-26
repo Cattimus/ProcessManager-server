@@ -15,27 +15,24 @@ import org.json.JSONObject;
 /* DATA STORAGE FILE STRUCTURE
 
 Main object:
-	master-username: string
-	master-passhash: hash,salt
-	users: list(JSON object)
+	master: User
+	users: list(User)
 
 User:
 	username: string
-	PATs: array(full of PAT hashes) PAT,salt
+	passhash: hash,salt
 
  */
-
-//TODO - need a secure method of distributing PAT, probably handled over TLS for client later
 
 public class Auth {
 	private static class User {
 		public String username;
-		public final List<String> PATs = new ArrayList<>();
+		public String passhash;
 	}
 
 	private String FilePath;
-	private String masterUsername;
-	private String masterPasshash;
+
+	private User master = new User();
 	private final List<User> users = new ArrayList<>();
 
 	Auth(String file) {
@@ -45,27 +42,35 @@ public class Auth {
 		if(check.exists()) {
 			readData();
 		} else {
-			masterUsername = "";
-			masterPasshash = "";
+			master.username = "";
+			master.passhash = "";
 		}
 	}
 
 	public void setMasterUsername(String username) {
-		masterUsername = username;
+		master.username = username;
+		writeFile();
 	}
 
 	public void setMasterPass(String password) {
-		masterPasshash = toBase64(hashPassword(password.toCharArray()));
+		master.passhash = toBase64(hashPassword(password.toCharArray()));
+		writeFile();
 	}
 
-	//rest all tokens
-	public void clearPATs(String username) {
-		var user = getUser(username);
-		if(user == null) {
-			return;
+	//change master username (requires authentication)
+	public void changeMasterUsername(String username, String password, String newUsername) {
+		if(checkMaster(username, password)) {
+			master.username = username;
+			writeFile();
 		}
+	}
 
-		user.PATs.clear();
+	//change master password(requires authentication)
+	public void changeMasterPass(String username, String password, String newPass) {
+		if(checkMaster(username, password)) {
+			master.passhash = toBase64(hashPassword(newPass.toCharArray()));
+			writeFile();
+		}
 	}
 
 	//find a user based on username
@@ -79,12 +84,38 @@ public class Auth {
 		return null;
 	}
 
+	//change a password for a user(requires authentication)
+	public void changePass(String username, String currentPass, String newPass) {
+		var user = getUser(username);
+		if(user == null) {
+			return;
+		}
+
+		if(checkPassword(username, currentPass)) {
+			user.passhash = toBase64(hashPassword(newPass.toCharArray()));
+			writeFile();
+		}
+	}
+
+	//change username for a user(requires authentication)
+	public void changeUsername(String username, String currentPass, String newUsername) {
+		var user = getUser(username);
+		if(user == null) {
+			return;
+		}
+
+		if(checkPassword(username, currentPass)) {
+			user.username = newUsername;
+			writeFile();
+		}
+	}
+
 	//master password challenge
 	public boolean checkMaster(String username, String password) {
-		var data = fromBase64(masterPasshash);
+		var data = fromBase64(master.passhash);
 		boolean result = checkHash(password.toCharArray(), data[0], data[1]);
 
-		if(username.equals(masterUsername)) {
+		if(username.equals(master.username)) {
 			return result;
 		}
 
@@ -125,7 +156,7 @@ public class Auth {
 		if(!hasUser(username)) {
 			User current = new User();
 			current.username = username;
-			current.PATs.add(toBase64(hashPassword(password.toCharArray())));
+			current.passhash = toBase64(hashPassword(password.toCharArray()));
 			users.add(current);
 			writeFile();
 			return true;
@@ -134,16 +165,17 @@ public class Auth {
 		return false;
 	}
 
-	//add new PAT to existing user
-	public boolean addPAT(String username, String PAT) {
-		User user = getUser(username);
+	//remove a user (requires master authentication)
+	public void delUser(String username, String masterUsername, String masterPassword) {
+		var user = getUser(username);
 		if(user == null) {
-			return false;
+			return;
 		}
 
-		user.PATs.add(toBase64(hashPassword(PAT.toCharArray())));
-		writeFile();
-		return true;
+		if(checkMaster(masterUsername, masterPassword)) {
+			users.remove(user);
+			writeFile();
+		}
 	}
 
 	//this will overwrite the previous file on every new addition
@@ -179,20 +211,8 @@ public class Auth {
 		if(user == null) {
 			return false;
 		}
-
-		//check all recorded PATs
-		for(var pass : user.PATs) {
-			var data = fromBase64(pass);
-
-			//PAT and password match
-			boolean result = checkHash(password.toCharArray(), data[0], data[1]);
-			if(result) {
-				return true;
-			}
-		}
-
-		//no matches found for user
-		return false;
+		var data = fromBase64(user.passhash);
+		return checkHash(password.toCharArray(), data[0], data[1]);
 	}
 
 	//generate a password hash and salt value (for storage and later comparison)
@@ -239,9 +259,7 @@ public class Auth {
 		return MessageDigest.isEqual(hash, passhash);
 	}
 
-	//generate a PAT (personal access token) that will allow a user to connect in lieu of a password
-	//this will be passed to the standard hashPassword and checkPassword functions, only the hash will be stored long-term
-	//generating and/or adding new PATs to the file will require authentication with the master password
+	//PATs have been removed but this function will remain in case it's needed later
 	public static char[] genPAT() {
 		SecureRandom rand = new SecureRandom();
 
@@ -264,8 +282,8 @@ public class Auth {
 	//deserialize from file
 	private void readData() {
 		var data = readFile();
-		masterUsername = data.getString("master-username");
-		masterPasshash = data.getString("master-passhash");
+		master.username = data.getString("master-username");
+		master.passhash = data.getString("master-passhash");
 
 		var users = data.getJSONArray("users");
 		for(int i = 0; i < users.length(); i++) {
@@ -273,12 +291,7 @@ public class Auth {
 
 			User current = new User();
 			current.username = user.getString("username");
-
-			//add user PATs
-			var PATs = user.getJSONArray("PATs");
-			for(int x = 0; x < PATs.length(); x++) {
-				current.PATs.add(PATs.getString(x));
-			}
+			current.passhash = user.getString("passhash");
 
 			//add user to the overall array
 			this.users.add(current);
@@ -288,18 +301,15 @@ public class Auth {
 	//this function is exposed for debugging purposes
 	public JSONObject toJSON() {
 		JSONObject toWrite = new JSONObject();
-		toWrite.put("master-username", masterUsername);
-		toWrite.put("master-passhash", masterPasshash);
+		toWrite.put("master-username", master.username);
+		toWrite.put("master-passhash", master.passhash);
 
 		//add all users to array
 		JSONArray users = new JSONArray();
 		for(var user: this.users) {
 			JSONObject current = new JSONObject();
 			current.put("username", user.username);
-
-			JSONArray PATs = new JSONArray();
-			PATs.putAll(user.PATs);
-			current.put("PATs", PATs);
+			current.put("passhash", user.passhash);
 
 			users.put(current);
 		}
