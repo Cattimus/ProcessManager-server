@@ -52,13 +52,13 @@ public class Auth {
 		writeFile();
 	}
 
-	public void setMasterPass(String password) {
-		master.passhash = toBase64(hashPassword(password.toCharArray()));
+	public void setMasterPass(char[] password) {
+		master.passhash = toBase64(hashPassword(password));
 		writeFile();
 	}
 
 	//change master username (requires authentication)
-	public void changeMasterUsername(String username, String password, String newUsername) {
+	public void changeMasterUsername(String username, char[] password, String newUsername) {
 		if(checkMaster(username, password)) {
 			master.username = username;
 			writeFile();
@@ -66,28 +66,28 @@ public class Auth {
 	}
 
 	//change master password(requires authentication)
-	public void changeMasterPass(String username, String password, String newPass) {
+	public void changeMasterPass(String username, char[] password, char[] newPass) {
 		if(checkMaster(username, password)) {
-			master.passhash = toBase64(hashPassword(newPass.toCharArray()));
+			master.passhash = toBase64(hashPassword(newPass));
 			writeFile();
 		}
 	}
 
 	//change a password for a user(requires authentication)
-	public void changePass(String username, String currentPass, String newPass) {
+	public void changePass(String username, char[] currentPass, char[] newPass) {
 		var user = getUser(username);
 		if(user == null) {
 			return;
 		}
 
 		if(checkPassword(username, currentPass)) {
-			user.passhash = toBase64(hashPassword(newPass.toCharArray()));
+			user.passhash = toBase64(hashPassword(newPass));
 			writeFile();
 		}
 	}
 
 	//change username for a user(requires authentication)
-	public void changeUsername(String username, String currentPass, String newUsername) {
+	public void changeUsername(String username, char[] currentPass, String newUsername) {
 		var user = getUser(username);
 		if(user == null) {
 			return;
@@ -100,11 +100,11 @@ public class Auth {
 	}
 
 	//adds a hash to the storage file returns true on success, false on collision
-	public boolean addUser(String username, String password) {
+	public boolean addUser(String username, char[] password) {
 		if(!hasUser(username)) {
 			User current = new User();
 			current.username = username;
-			current.passhash = toBase64(hashPassword(password.toCharArray()));
+			current.passhash = toBase64(hashPassword(password));
 			users.add(current);
 			writeFile();
 			return true;
@@ -114,7 +114,7 @@ public class Auth {
 	}
 
 	//remove a user (requires master authentication)
-	public void delUser(String username, String masterUsername, String masterPassword) {
+	public void delUser(String username, String masterUsername, char[] masterPassword) {
 		var user = getUser(username);
 		if(user == null) {
 			return;
@@ -127,9 +127,9 @@ public class Auth {
 	}
 
 	//master password challenge
-	public boolean checkMaster(String username, String password) {
+	public boolean checkMaster(String username, char[] password) {
 		var data = fromBase64(master.passhash);
-		boolean result = checkHash(password.toCharArray(), data[0], data[1]);
+		boolean result = checkHash(password, data[0], data[1]);
 
 		if(username.equals(master.username)) {
 			return result;
@@ -206,17 +206,17 @@ public class Auth {
 	}
 
 	//check if the entered password matches hash on file
-	public boolean checkPassword(String username, String password) {
+	public boolean checkPassword(String username, char[] password) {
 		var user = getUser(username);
 		if(user == null) {
 			return false;
 		}
 		var data = fromBase64(user.passhash);
-		return checkHash(password.toCharArray(), data[0], data[1]);
+		return checkHash(password, data[0], data[1]);
 	}
 
 	//generate a password hash and salt value (for storage and later comparison)
-	private byte[][] hashPassword(char[] password) {
+	public byte[][] hashPassword(char[] password) {
 		SecureRandom rand = new SecureRandom();
 		byte[] salt = new byte[32];
 		rand.nextBytes(salt);
@@ -241,7 +241,7 @@ public class Auth {
 		return toReturn;
 	}
 
-	private boolean checkHash(char[] password, byte[] passhash, byte[] salt) {
+	public boolean checkHash(char[] password, byte[] passhash, byte[] salt) {
 		//PBKDF2 with HMAC sha256 310,000 iterations (standard practice at the time of writing)
 		PBEKeySpec keySpec = new PBEKeySpec(password, salt, 310000, 256);
 		byte[] hash;
