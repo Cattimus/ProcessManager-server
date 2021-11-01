@@ -23,6 +23,70 @@ public class Task {
 		elapseTime  = toCopy.elapseTime;
 	}
 
+	//deserialize from JSON object
+	Task(JSONObject data) {
+		type = stringToType(data.getString("type"));
+		taskName = data.getString("name");
+		elapseTime = LocalDateTime.parse(data.getString("elapse-time"));
+		frequency = Duration.parse(data.getString("frequency"));
+		enabled = data.getBoolean("enabled");
+		oneTime = data.getBoolean("one-time");
+
+		//extract signal field
+		var signalTemp = data.get("signal");
+		if(signalTemp != JSONObject.NULL) {
+			signal = signalTemp.toString();
+		} else {
+			signal = null;
+		}
+
+		//set local time in the future if it's in the past
+		if(elapseTime.isBefore(LocalDateTime.now())) {
+			LocalTime temp = elapseTime.toLocalTime();
+			elapseTime = LocalDateTime.now();
+			setElapseTime(temp);
+			elapseTime = elapseTime.plus(frequency);
+		}
+	}
+
+	private String typeToString(SignalType data) {
+		switch(data) {
+			case START:
+				return "start";
+
+			case STOP:
+				return "stop";
+
+			case RESTART:
+				return "restart";
+
+			case SIGNAL:
+				return "signal";
+
+			default:
+				return "none";
+		}
+	}
+
+	private SignalType stringToType(String data) {
+		switch(data) {
+			case "start":
+				return SignalType.START;
+
+			case "stop":
+				return SignalType.STOP;
+
+			case "restart":
+				return SignalType.RESTART;
+
+			case "signal":
+				return SignalType.SIGNAL;
+
+			default:
+				return SignalType.NONE;
+		}
+	}
+
 	//change local time
 	public void setElapseTime(LocalTime scheduleTime) {
 		Duration toAdjust = Duration.between(elapseTime.toLocalTime(), scheduleTime);
@@ -60,17 +124,37 @@ public class Task {
 	   enabled: enabled(boolean)
 	   one-time: oneTime(boolean)
 	 */
-	public JSONObject serialize() {
+	public JSONObject toJSON() {
 		JSONObject record = new JSONObject();
-		record.put("type", "task");
+		record.put("ID", "task");
+		record.put("type", typeToString(this.type));
 		record.put("name", taskName);
-		record.put("signal", signal);
 		record.put("elapse-time", elapseTime.toString());
 		record.put("frequency", frequency.toString());
 		record.put("enabled", enabled);
 		record.put("one-time", oneTime);
 
+		if(signal != null) {
+			record.put("signal", signal);
+		} else {
+			record.put("signal", JSONObject.NULL);
+		}
+
 		return record;
+	}
+
+	public String toString() {
+		String toReturn = "";
+
+		toReturn += "Task name: " 	 + taskName + "\n";
+		toReturn += "Elapse time: "  + elapseTime + "\n";
+		toReturn += "Type: " 		 + typeToString(type) + "\n";
+		toReturn += "Signal: " 		 + signal + "\n";
+		toReturn += "Frequency: "    + frequency + "\n";
+		toReturn += "Enabled: " 	 + enabled + "\n";
+		toReturn += "One time: " 	 + oneTime;
+
+		return toReturn;
 	}
 
 	//setter/getter for enabled
